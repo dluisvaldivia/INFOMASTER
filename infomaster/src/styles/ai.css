@@ -1,0 +1,223 @@
+/* ===========================================================================
+   ESTÉTICA IA — USO EXCLUSIVO DE SUPERFICIES DE INTELIGENCIA ARTIFICIAL
+   ===========================================================================
+
+   REGLA DEL PROYECTO: el look aurora es la señal que distingue lo que es IA
+   de lo que no lo es. En cuanto se use en un botón, una sección o una tarjeta
+   normal, el sitio pierde exactamente esa señal.
+
+   Por eso:
+   - Estos tokens se llaman --ai-* y viven AQUÍ, no en el @theme de index.css.
+   - Este archivo solo se importa desde src/components/chat/.
+   - La paleta SÍ parte del rojo y el amarillo de marca (subiendo/bajando de
+     tono sobre esa misma escala), a diferencia del índigo/violeta/cian
+     original. La señal de "esto es IA" ya no depende de un family de color
+     ajeno: la da el tratamiento (aurora animada, blur, cristal traslúcido),
+     que sigue exclusivo de components/chat/.
+
+   Antes de reutilizar cualquier clase .ai-* fuera de components/chat/:
+   probablemente lo que hace falta es un componente normal en components/ui/.
+   =========================================================================== */
+
+.ai-surface {
+  /* misma rampa que --color-brand-red/-deep/-dark en index.css */
+  --ai-red: #d93d2d;
+  --ai-red-deep: #b32e20;
+  --ai-maroon: #8f2418;
+  /* punto medio entre el rojo y el amarillo de marca: puente cálido */
+  --ai-amber: #ee8a1b;
+  --ai-gold: #f8d10f;
+
+  --ai-panel: rgba(255, 255, 255, 0.92);
+  --ai-panel-border: rgba(143, 36, 24, 0.2);
+  --ai-ink: #1a1614;
+  --ai-ink-muted: #5c423c;
+}
+
+/* --- Aurora de fondo -------------------------------------------------- */
+
+.ai-aurora {
+  position: absolute;
+  inset: -22%;
+  pointer-events: none;
+  filter: blur(52px);
+  opacity: 0.95;
+}
+
+.ai-aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  /* solo transform/opacity se animan: nunca width/height */
+  will-change: transform;
+}
+
+.ai-aurora-blob:nth-child(1) {
+  top: 2%;
+  left: 4%;
+  width: 58%;
+  height: 58%;
+  background: radial-gradient(circle, var(--ai-maroon) 0%, transparent 70%);
+  animation: ai-drift-a 18s ease-in-out infinite alternate;
+}
+
+.ai-aurora-blob:nth-child(2) {
+  top: 32%;
+  right: 0%;
+  width: 62%;
+  height: 62%;
+  background: radial-gradient(circle, var(--ai-gold) 0%, transparent 70%);
+  animation: ai-drift-b 22s ease-in-out infinite alternate;
+}
+
+.ai-aurora-blob:nth-child(3) {
+  bottom: 0%;
+  left: 18%;
+  width: 55%;
+  height: 55%;
+  background: radial-gradient(circle, var(--ai-red) 0%, transparent 70%);
+  animation: ai-drift-c 26s ease-in-out infinite alternate;
+}
+
+.ai-aurora-blob:nth-child(4) {
+  top: 12%;
+  right: 22%;
+  width: 34%;
+  height: 34%;
+  opacity: 0.5;
+  background: radial-gradient(circle, var(--ai-amber) 0%, transparent 70%);
+  animation: ai-drift-b 30s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes ai-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(14%, 10%, 0) scale(1.15);
+  }
+}
+
+@keyframes ai-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-16%, -12%, 0) scale(0.92);
+  }
+}
+
+@keyframes ai-drift-c {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  to {
+    transform: translate3d(10%, -14%, 0) scale(1.2);
+  }
+}
+
+/* --- Launcher ---------------------------------------------------------- */
+
+.ai-launcher-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    var(--ai-red),
+    var(--ai-amber),
+    var(--ai-gold),
+    var(--ai-maroon),
+    var(--ai-red)
+  );
+  animation: ai-spin 6s linear infinite;
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.ai-launcher-glow {
+  position: absolute;
+  inset: -26px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--ai-gold) 0%, transparent 65%);
+  opacity: 0.45;
+  filter: blur(16px);
+  animation: ai-pulse 3.4s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.08);
+  }
+}
+
+/* --- Indicador de escritura ------------------------------------------- */
+
+.ai-dot {
+  animation: ai-bounce 1.2s ease-in-out infinite;
+}
+
+.ai-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ai-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ai-bounce {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* --- Entrada del panel ------------------------------------------------- */
+
+.ai-panel-enter {
+  animation: ai-rise 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ai-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* --- Movimiento reducido ----------------------------------------------
+   Un fondo en deriva perpetua es justo lo que esta preferencia existe para
+   evitar: la aurora se queda quieta, no solo más lenta. */
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-aurora-blob,
+  .ai-launcher-ring,
+  .ai-launcher-glow,
+  .ai-dot,
+  .ai-panel-enter {
+    animation: none !important;
+  }
+
+  .ai-dot {
+    opacity: 0.7;
+  }
+}

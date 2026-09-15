@@ -1,0 +1,74 @@
+# Set dorado de recuperación. NO usa el LLM: es determinista y gratis, así que
+# se puede correr en cada cambio del retriever.
+#
+# 'espera' es una subcadena (sin distinguir mayúsculas ni acentos) que debe
+# aparecer en el título de alguno de los 6 primeros resultados. 'espera_tipo'
+# exige que alguno de esos 6 sea de ese tipo.
+# Todos los casos existen también en la muestra de --sample 200, por los casos
+# forzados de ingest.py, así que este fichero vale igual en test y en completo.
+
+recuperacion:
+  - id: sigla-prl
+    pregunta: "prevención de riesgos"
+    espera: "riesgos"
+  - id: sigla-prl-coloquial
+    pregunta: "cursos de PRL para mandos intermedios"
+    espera: "mando intermedio"
+  - id: marca-excel
+    pregunta: "Excel"
+    espera: "excel"
+  - id: marca-excel-frase
+    pregunta: "quiero aprender hojas de cálculo"
+    espera: "excel"
+  - id: oficio-soldadura
+    pregunta: "soldadura"
+    espera: "soldadura"
+  - id: oficio-coloquial
+    pregunta: "quiero trabajar de cocinero"
+    espera: "cocina"
+  - id: codigo-sepe
+    pregunta: "AFDA001PO"
+    espera: "actividad fisica para colectivos especiales"
+  - id: ciberseguridad
+    pregunta: "ciberseguridad"
+    espera: "ciberseguridad"
+  - id: idiomas
+    pregunta: "cursos de inglés"
+    espera: "ingl"
+  # El código va en la columna CODIGO y no en el título: hasta que la ingesta
+  # lo recogió, este curso era inencontrable por su código.
+  - id: codigo-en-columna
+    pregunta: "AF0514-N"
+    espera: "gestión auxiliar de reproducción"
+  # "certificado de profesionalidad" no aparece en ningún título: solo consta
+  # en la cabecera del bloque del Excel, que es la subsección.
+  - id: tipo-certificado
+    pregunta: "certificado de profesionalidad"
+    espera_tipo: "certificado_profesionalidad"
+
+# Una categoría mal adivinada por el clasificador no puede esconder el acierto.
+categoria_blanda:
+  - id: categoria-adivinada-mal
+    pregunta: "excel"
+    filtros: {categoria: "INFORMÁTICA Y COMUNICACIONES"}
+    espera: "excel"
+
+filtros:
+  - id: horas-max
+    pregunta: "cursos de informática de menos de 100 horas"
+    filtros: {categoria: "INFORMÁTICA Y COMUNICACIONES", horas_max: 100}
+    max_horas: 100
+  - id: tipo-certificado-filtro
+    pregunta: "certificados de profesionalidad"
+    filtros: {tipo: "certificado_profesionalidad"}
+    tipo: "certificado_profesionalidad"
+  - id: categoria-exacta
+    pregunta: "algo de sanidad"
+    filtros: {categoria: "SANIDAD"}
+    categoria: "SANIDAD"
+
+# UF y MF no se recomiendan, pero sí se localizan si el usuario nombra el código.
+recomendables:
+  - id: uf-no-recomendada
+    pregunta: "cursos de formación"
+    prohibe_tipos: ["unidad_formativa", "modulo_formativo"]

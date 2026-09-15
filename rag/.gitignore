@@ -1,0 +1,7 @@
+.venv/
+chroma/
+data/*.parquet
+data/catalog_meta.json
+.env
+__pycache__/
+*.pyc

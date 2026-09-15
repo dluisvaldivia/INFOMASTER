@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Tokens de marca — Infomaster Formación
+   Nota de contraste (verificado, no improvisar):
+   - brand-red como TEXTO sobre crema = 4,21:1 → falla AA.
+     Para texto rojo sobre fondo claro usar siempre brand-red-deep (5,88:1).
+   - Blanco sobre brand-red = 4,51:1 → pasa AA. Válido para el botón rojo.
+   - brand-yellow es demasiado claro para texto blanco: el botón amarillo
+     lleva texto `ink`, nunca blanco.
+
+   Los tokens de la estética IA (--ai-*) NO viven aquí: están aislados en
+   src/styles/ai.css y solo los consume components/chat/.
+--------------------------------------------------------------------------- */
+@theme {
+  --color-brand-red: #d93d2d;
+  --color-brand-red-deep: #b32e20;
+  --color-brand-red-dark: #8f2418;
+  --color-brand-yellow: #f8d10f;
+  --color-brand-yellow-deep: #d9b400;
+
+  --color-cream: #faf7ef;
+  --color-cream-deep: #f2ece0;
+  --color-ink: #1a1614;
+  --color-ink-muted: #5c534e;
+  --color-line: #e4dccd;
+
+  --font-heading: Poppins, ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    color: var(--color-ink);
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-red-deep);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
