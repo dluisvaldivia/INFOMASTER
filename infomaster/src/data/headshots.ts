@@ -1,3 +1,5 @@
+import { publicUrl } from '../lib/publicUrl'
+
 /**
  * Derivados WebP generados desde src/assets/headshots/ (los originales se
  * conservan ahí sin tocar). Cada entrada tiene versión 400 y 800 px cuadrada.
@@ -18,5 +20,5 @@ export const HEADSHOTS: Headshot[] = [
 ]
 
 export function headshotSrc(slug: string, width: 400 | 800) {
-  return `/images/headshots/${slug}-${width}.webp`
+  return publicUrl(`images/headshots/${slug}-${width}.webp`)
 }

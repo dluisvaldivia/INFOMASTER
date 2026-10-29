@@ -1,0 +1,64 @@
+# CI en cada push y pull request (lint + build); en main, además, publica la
+# web en GitHub Pages: https://dluisvaldivia.github.io/INFOMASTER/
+name: CI/CD
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infomaster
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: infomaster/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+          # Sin VITE_RAG_URL el chat se muestra en modo no configurado.
+          VITE_RAG_URL: ${{ vars.VITE_RAG_URL }}
+
+      # SPA: GitHub Pages sirve 404.html en rutas desconocidas
+      # (p. ej. /INFOMASTER/cursos al recargar), así carga la app igualmente.
+      - run: cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: infomaster/dist
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

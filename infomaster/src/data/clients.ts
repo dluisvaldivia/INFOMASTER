@@ -1,3 +1,5 @@
+import { publicUrl } from '../lib/publicUrl'
+
 /**
  * Logos de clientes y acreditaciones.
  *
@@ -16,17 +18,17 @@ export type LogoEntry = {
 export const CLIENTS: LogoEntry[] = [
   {
     name: 'Jardines Villalba',
-    src: '/images/empresasparticipantes/jardines-villalba-logo.png',
+    src: publicUrl('/images/empresasparticipantes/jardines-villalba-logo.png'),
   },
   {
     name: 'Aloha Golf Club',
-    src: '/images/empresasparticipantes/Logo-Aloha-50-Aniversario-Blanco.png',
+    src: publicUrl('/images/empresasparticipantes/Logo-Aloha-50-Aniversario-Blanco.png'),
     dark: true,
   },
-  { name: 'HGV', src: '/images/empresasparticipantes/HGV-blue_logo.svg' },
+  { name: 'HGV', src: publicUrl('/images/empresasparticipantes/HGV-blue_logo.svg') },
   {
     name: 'Empleabilidad ETT',
-    src: '/images/empresasparticipantes/logo-empleabilidad-1-min.png',
+    src: publicUrl('/images/empresasparticipantes/logo-empleabilidad-1-min.png'),
   },
   { name: 'Cliente 5' },
   { name: 'Cliente 6' },

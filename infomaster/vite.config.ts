@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages sirve la web bajo /INFOMASTER/; el workflow pasa BASE_PATH.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset()] }),
