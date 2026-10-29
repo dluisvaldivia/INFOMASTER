@@ -5,12 +5,15 @@ import { Footer } from './Footer'
 import { ChatWidget } from '../chat/ChatWidget'
 
 export function Layout() {
-  const { pathname } = useLocation()
+  const { pathname, hash } = useLocation()
 
-  // el router no reposiciona el scroll por sí solo en una SPA
+  // el router no reposiciona el scroll por sí solo en una SPA; con #ancla
+  // (p. ej. /formacion#calculadora) baja hasta la sección
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [pathname])
+    const target = hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null
+    if (target) target.scrollIntoView({ block: 'start' })
+    else window.scrollTo(0, 0)
+  }, [pathname, hash])
 
   return (
     <div className="flex min-h-svh flex-col">
