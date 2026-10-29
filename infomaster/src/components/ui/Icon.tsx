@@ -130,3 +130,13 @@ export function CalendarIcon(props: IconProps) {
     </Base>
   )
 }
+
+/** Bocadillo de chat con cola recta: «escríbenos por WhatsApp» sin copiar su logo. */
+export function ChatIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 4.5h16v11H10l-4.5 4v-4H4v-11Z" />
+      <path d="M8 9h8M8 12h5" />
+    </Base>
+  )
+}

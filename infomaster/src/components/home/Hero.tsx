@@ -1,15 +1,7 @@
-import { CONTACT } from '../../data/nav'
 import { LinkButton } from '../ui/Button'
 import { ArrowRightIcon } from '../ui/Icon'
 import { LogoMark } from '../ui/Square'
 import { HeroMosaic } from './HeroMosaic'
-
-/** Lo que Infomaster hace por ti, en tres filetes. Sale del propio contenido del sitio. */
-const FACTS = [
-  { title: 'Tramitamos la bonificación', text: 'Calculamos tu crédito y nos ocupamos de FUNDAE.' },
-  { title: 'Presencial, online o mixta', text: 'Grupos con fecha cerrada. Información sin compromiso.' },
-  { title: 'Centro acreditado en Málaga', text: CONTACT.address },
-]
 
 export function Hero() {
   return (
@@ -48,18 +40,6 @@ export function Hero() {
           <HeroMosaic />
         </div>
       </div>
-
-      <ul className="mx-auto grid max-w-7xl px-5 sm:grid-cols-3 lg:px-8">
-        {FACTS.map((fact) => (
-          <li
-            key={fact.title}
-            className="border-t border-ink py-5 sm:border-l sm:border-l-line sm:px-6 sm:first:border-l-0 sm:first:pl-0"
-          >
-            <p className="font-heading text-base font-semibold">{fact.title}</p>
-            <p className="mt-1 text-sm leading-relaxed text-ink-muted">{fact.text}</p>
-          </li>
-        ))}
-      </ul>
     </section>
   )
 }

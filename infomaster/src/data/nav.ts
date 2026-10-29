@@ -22,4 +22,11 @@ export const CONTACT = {
   phoneHref: 'tel:+34951333677',
   email: 'info@infomasterformacion.es',
   emailHref: 'mailto:info@infomasterformacion.es',
+  /** Solo dígitos, con prefijo de país. PROVISIONAL: es el fijo; poner el número real de WhatsApp. */
+  whatsapp: '34951333677',
 } as const
+
+/** Enlace wa.me con el mensaje ya escrito; el usuario solo pulsa «enviar». */
+export function whatsappHref(message: string) {
+  return `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(message)}`
+}
