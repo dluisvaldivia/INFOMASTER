@@ -64,7 +64,7 @@ export function Navbar() {
         className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-6 px-5 lg:px-8"
       >
         <NavLink to="/" aria-label="Infomaster Formación — Inicio" className="shrink-0">
-          <Logo className="h-11 w-auto" />
+          <Logo className="h-14 w-auto" />
         </NavLink>
 
         <ul className="hidden items-center gap-7 lg:flex">
@@ -75,7 +75,7 @@ export function Navbar() {
                   <>
                     {/* La página actual se marca con el cuadrado de la marca. */}
                     <Square
-                      angle={18}
+                      angle={19}
                       className={['size-2 transition-opacity', isActive ? '' : 'opacity-0'].join(' ')}
                     />
                     {item.label}
@@ -141,7 +141,7 @@ export function Navbar() {
                     {({ isActive }) => (
                       <>
                         {item.label}
-                        {isActive && <Square angle={18} className="size-2.5" />}
+                        {isActive && <Square angle={19} className="size-2.5" />}
                       </>
                     )}
                   </NavLink>

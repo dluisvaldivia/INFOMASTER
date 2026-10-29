@@ -1,7 +1,7 @@
 import { CONTACT } from '../../data/nav'
 import { LinkButton } from '../ui/Button'
 import { ArrowRightIcon } from '../ui/Icon'
-import { SquareTrio } from '../ui/Square'
+import { LogoMark } from '../ui/Square'
 import { HeroMosaic } from './HeroMosaic'
 
 /** Lo que Infomaster hace por ti, en tres filetes. Sale del propio contenido del sitio. */
@@ -22,8 +22,8 @@ export function Hero() {
               <br />
               pares<span className="sr-only">!</span>
             </span>
-            {/* El trío del logo hace de exclamación. */}
-            <SquareTrio animated className="mb-[0.08em] h-[0.95em] w-auto shrink-0" />
+            {/* Los cuadrados del logo hacen de exclamación. */}
+            <LogoMark animated className="mb-[0.08em] h-[0.95em] w-auto shrink-0" />
           </h1>
 
           <p className="mt-8 max-w-[34ch] text-xl leading-snug text-ink text-pretty sm:text-2xl">
@@ -38,7 +38,7 @@ export function Hero() {
               Solicita información
               <ArrowRightIcon className="size-4" />
             </LinkButton>
-            <LinkButton to="/formacion" variant="outline" size="lg">
+            <LinkButton to="/formacion#calculadora" variant="outline" size="lg">
               Consulta tus créditos
             </LinkButton>
           </div>

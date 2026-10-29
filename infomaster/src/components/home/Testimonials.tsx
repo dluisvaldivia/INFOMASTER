@@ -25,7 +25,7 @@ export function Testimonials() {
             className="flex flex-col border-t border-line py-8 first:border-t-0 first:pt-0 md:border-t-0 md:border-l md:px-8 md:py-0 md:first:border-l-0 md:first:pl-0"
           >
             {/* El cuadrado girado de la marca hace de comilla. */}
-            <Square angle={18} className="mb-6 size-3.5" />
+            <Square angle={19} className="mb-6 size-3.5" />
             <blockquote className="flex-1 text-lg leading-relaxed text-ink text-pretty">
               {item.quote}
             </blockquote>

@@ -4,13 +4,13 @@ import { CAMPUS_URL, CONTACT, NAV_ITEMS } from '../../data/nav'
 import { LogoPlaceholder } from '../ui/LogoPlaceholder'
 import { Logo } from '../ui/Logo'
 import { MailIcon, PhoneIcon, PinIcon } from '../ui/Icon'
-import { SquareTrio } from '../ui/Square'
+import { LogoMark } from '../ui/Square'
 
 export function Footer() {
   return (
     <footer className="relative mt-24 overflow-hidden bg-ink text-cream">
       {/* El trío del logo a escala de cartel, recortado por el borde. */}
-      <SquareTrio className="pointer-events-none absolute -right-16 -bottom-24 h-[26rem] w-auto opacity-90 max-md:hidden" />
+      <LogoMark className="pointer-events-none absolute -right-16 -bottom-24 h-[26rem] w-auto opacity-90 max-md:hidden" />
 
       <div className="relative mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="mb-14 grid gap-6 lg:grid-cols-12 lg:gap-8">
@@ -26,7 +26,7 @@ export function Footer() {
 
         <div className="grid gap-12 border-t border-cream/25 pt-12 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
-            <Logo tone="light" className="mb-5 h-12 w-auto" />
+            <Logo tone="light" className="mb-5 h-16 w-auto" />
             <p className="max-w-xs text-sm leading-relaxed text-cream/75">
               Formación bonificada y subvencionada para empresas y trabajadores.
               Gestionamos tu crédito de formación de principio a fin.

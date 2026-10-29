@@ -1,6 +1,8 @@
+import { LogoSquares } from './Square'
+
 /**
  * Aproximación SVG del logo mientras no llega el archivo definitivo:
- * wordmark "INFOMASTER / formación" + los tres cuadrados rotados.
+ * wordmark "INFOMASTER / formación" + los cuatro cuadrados rotados.
  *
  * Cuando llegue el logo real, dejarlo en public/brand/logo.png y cambiar
  * LOGO_SRC por su ruta — el resto del componente ya lo contempla.
@@ -28,62 +30,42 @@ export function Logo({ className, tone = 'dark' }: Props) {
     )
   }
 
+  // Coordenadas del logo original: wordmark a la izquierda y los cuatro
+  // cuadrados a la derecha, que ocupan toda la altura. textLength fija el
+  // ancho del texto para que nunca invada los cuadrados.
   return (
     <svg
-      viewBox="0 0 252 76"
+      viewBox="0 0 396 208"
       role="img"
       aria-label="Infomaster Formación"
       className={className}
     >
       <text
-        x="0"
-        y="34"
+        x="3"
+        y="81"
         fontFamily="Archivo, sans-serif"
-        fontSize="27"
+        fontSize="44"
         fontWeight="700"
-        letterSpacing="-0.4"
+        textLength="266"
+        lengthAdjust="spacingAndGlyphs"
         fill={text}
       >
         INFOMASTER
       </text>
       <text
-        x="0"
-        y="63"
+        x="32"
+        y="141"
         fontFamily="Archivo, sans-serif"
-        fontSize="25"
-        fontWeight="500"
-        letterSpacing="0.6"
+        fontSize="44"
+        fontWeight="600"
+        textLength="209"
+        lengthAdjust="spacingAndGlyphs"
         fill={text}
       >
         formación
       </text>
-      {/* Los cuadrados arrancan a la derecha del wordmark: por debajo de
-          x=180 se solapan con la "R" de INFOMASTER. */}
-      <g>
-        <rect
-          x="196"
-          y="1"
-          width="27"
-          height="27"
-                    fill="#D93D2D"
-          transform="rotate(18 209 14)"
-        />
-        <rect
-          x="201"
-          y="29"
-          width="29"
-          height="29"
-                    fill="#F8D10F"
-          transform="rotate(-10 215 43)"
-        />
-        <rect
-          x="183"
-          y="47"
-          width="18"
-          height="18"
-                    fill="#D93D2D"
-          transform="rotate(24 192 56)"
-        />
+      <g transform="translate(212 0)">
+        <LogoSquares />
       </g>
     </svg>
   )
