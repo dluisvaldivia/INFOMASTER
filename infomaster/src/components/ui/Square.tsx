@@ -51,22 +51,24 @@ const LOGO_MARK_VIEWBOX = { width: 182, height: 208 }
 
 export function LogoSquares({ animated = false }: { animated?: boolean }) {
   const motion = animated ? 'origin-center [transform-box:fill-box] animate-square-in' : undefined
+  // El giro fijo va en el <g>: con transform-box:fill-box, transform-origin
+  // también desplaza el atributo transform del propio <rect> y lo saca de sitio.
   return LOGO_SQUARES.map(({ cx, cy, size, angle, fill }, index) => (
-    <rect
-      key={index}
-      x={cx - size / 2}
-      y={cy - size / 2}
-      width={size}
-      height={size}
-      fill={fill}
-      transform={angle ? `rotate(${angle} ${cx} ${cy})` : undefined}
-      className={motion}
-      style={
-        animated
-          ? ({ '--undo': `${-angle}deg`, animationDelay: `${index * 120}ms` } as CSSProperties)
-          : undefined
-      }
-    />
+    <g key={index} transform={angle ? `rotate(${angle} ${cx} ${cy})` : undefined}>
+      <rect
+        x={cx - size / 2}
+        y={cy - size / 2}
+        width={size}
+        height={size}
+        fill={fill}
+        className={motion}
+        style={
+          animated
+            ? ({ '--undo': `${-angle}deg`, animationDelay: `${index * 120}ms` } as CSSProperties)
+            : undefined
+        }
+      />
+    </g>
   ))
 }
 
