@@ -3,7 +3,6 @@ import { ComingSoon, PageHeader } from '../components/ui/PageHeader'
 export function Formacion() {
   return (
     <PageHeader
-      eyebrow="Formación"
       title="Formación bonificada y subvencionada"
       intro="Tu empresa dispone cada año de un crédito para formar a su plantilla. Nosotros calculamos a cuánto asciende, tramitamos la bonificación ante FUNDAE y nos ocupamos de toda la documentación."
     >

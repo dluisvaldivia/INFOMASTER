@@ -13,9 +13,8 @@ export function LogoPlaceholder({ entry, className }: Props) {
   const { name, src, dark } = entry
 
   const frame = [
-    'flex aspect-[3/2] w-full items-center justify-center rounded-xl p-4',
+    'flex aspect-[3/2] w-full items-center justify-center p-5',
     dark ? 'bg-ink' : 'bg-white',
-    'ring-1 ring-line transition-shadow duration-200',
     className,
   ]
     .filter(Boolean)
@@ -38,10 +37,7 @@ export function LogoPlaceholder({ entry, className }: Props) {
   return (
     <div className={frame}>
       <div className="flex flex-col items-center gap-1.5 text-center">
-        <span
-          aria-hidden="true"
-          className="block h-1.5 w-8 rounded-full bg-line"
-        />
+        <span aria-hidden="true" className="block size-2 bg-line" />
         <span className="font-heading text-[11px] leading-tight font-medium text-ink-muted">
           {name}
         </span>

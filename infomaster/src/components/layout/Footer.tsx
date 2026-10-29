@@ -4,54 +4,58 @@ import { CAMPUS_URL, CONTACT, NAV_ITEMS } from '../../data/nav'
 import { LogoPlaceholder } from '../ui/LogoPlaceholder'
 import { Logo } from '../ui/Logo'
 import { MailIcon, PhoneIcon, PinIcon } from '../ui/Icon'
+import { SquareTrio } from '../ui/Square'
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-line bg-white/60">
-      <div className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="mb-14">
-          <p className="mb-6 text-center font-heading text-xs tracking-[0.16em] text-ink-muted uppercase">
+    <footer className="relative mt-24 overflow-hidden bg-ink text-cream">
+      {/* El trío del logo a escala de cartel, recortado por el borde. */}
+      <SquareTrio className="pointer-events-none absolute -right-16 -bottom-24 h-[26rem] w-auto opacity-90 max-md:hidden" />
+
+      <div className="relative mx-auto max-w-7xl px-5 py-16 lg:px-8">
+        <div className="mb-14 grid gap-6 lg:grid-cols-12 lg:gap-8">
+          <h2 className="font-heading text-base font-semibold text-cream lg:col-span-4">
             Centro acreditado
-          </p>
-          <div className="mx-auto grid max-w-3xl grid-cols-2 items-center gap-5 sm:grid-cols-3">
+          </h2>
+          <div className="grid grid-cols-2 gap-px bg-cream/20 sm:grid-cols-3 lg:col-span-8">
             {ACCREDITATIONS.map((entry) => (
               <LogoPlaceholder key={entry.name} entry={entry} />
             ))}
           </div>
         </div>
 
-        <div className="grid gap-12 border-t border-line pt-12 md:grid-cols-[1.2fr_1fr_1fr]">
+        <div className="grid gap-12 border-t border-cream/25 pt-12 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
-            <Logo className="mb-5 h-12 w-auto" />
-            <p className="max-w-xs text-sm leading-relaxed text-ink-muted">
+            <Logo tone="light" className="mb-5 h-12 w-auto" />
+            <p className="max-w-xs text-sm leading-relaxed text-cream/75">
               Formación bonificada y subvencionada para empresas y trabajadores.
               Gestionamos tu crédito de formación de principio a fin.
             </p>
           </div>
 
           <div>
-            <h2 className="mb-5 font-heading text-sm font-bold tracking-[0.14em] uppercase">
+            <h2 className="mb-5 font-heading text-base font-semibold text-cream">
               Contacto
             </h2>
             <ul className="space-y-4 text-sm">
               <li className="flex items-start gap-3">
-                <PinIcon className="mt-0.5 size-4 shrink-0 text-brand-yellow-deep" />
+                <PinIcon className="mt-0.5 size-4 shrink-0 text-brand-yellow" />
                 <span className="font-semibold">{CONTACT.company}</span>
               </li>
               <li className="flex items-start gap-3">
-                <PhoneIcon className="mt-0.5 size-4 shrink-0 text-brand-yellow-deep" />
+                <PhoneIcon className="mt-0.5 size-4 shrink-0 text-brand-yellow" />
                 <a
                   href={CONTACT.phoneHref}
-                  className="text-ink-muted transition-colors hover:text-brand-red-deep"
+                  className="text-cream/75 transition-colors hover:text-brand-yellow"
                 >
                   {CONTACT.phone}
                 </a>
               </li>
               <li className="flex items-start gap-3">
-                <MailIcon className="mt-0.5 size-4 shrink-0 text-brand-yellow-deep" />
+                <MailIcon className="mt-0.5 size-4 shrink-0 text-brand-yellow" />
                 <a
                   href={CONTACT.emailHref}
-                  className="break-all text-ink-muted transition-colors hover:text-brand-red-deep"
+                  className="break-all text-cream/75 transition-colors hover:text-brand-yellow"
                 >
                   {CONTACT.email}
                 </a>
@@ -60,7 +64,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h2 className="mb-5 font-heading text-sm font-bold tracking-[0.14em] uppercase">
+            <h2 className="mb-5 font-heading text-base font-semibold text-cream">
               Navegación
             </h2>
             <ul className="space-y-3 text-sm">
@@ -68,7 +72,7 @@ export function Footer() {
                 <li key={item.to}>
                   <Link
                     to={item.to}
-                    className="text-ink-muted transition-colors hover:text-brand-red-deep"
+                    className="text-cream/75 transition-colors hover:text-brand-yellow"
                   >
                     {item.label}
                   </Link>
@@ -79,7 +83,7 @@ export function Footer() {
                   href={CAMPUS_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-ink-muted transition-colors hover:text-brand-red-deep"
+                  className="text-cream/75 transition-colors hover:text-brand-yellow"
                 >
                   Campus virtual
                 </a>
@@ -88,8 +92,8 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center gap-6 border-t border-line pt-8 sm:flex-row sm:justify-between">
-          <p className="text-xs text-ink-muted">
+        <div className="mt-12 flex flex-col items-start gap-6 border-t border-cream/25 pt-8 sm:flex-row sm:items-center sm:justify-between md:pr-56">
+          <p className="text-xs text-cream/70">
             © {new Date().getFullYear()} Infomaster Formación. Todos los derechos
             reservados.
           </p>

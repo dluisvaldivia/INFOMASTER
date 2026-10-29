@@ -5,7 +5,6 @@ export function Cursos() {
   return (
     <>
       <PageHeader
-        eyebrow="Cursos"
         title="Nuestro catálogo"
         intro="Cursos presenciales, online y en modalidad mixta, diseñados para aplicarse desde el primer día en el puesto de trabajo."
       >

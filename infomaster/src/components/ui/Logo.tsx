@@ -9,9 +9,13 @@ const LOGO_SRC: string | undefined = undefined
 
 type Props = {
   className?: string
+  /** `light` para fondos oscuros (footer en tinta). */
+  tone?: 'dark' | 'light'
 }
 
-export function Logo({ className }: Props) {
+export function Logo({ className, tone = 'dark' }: Props) {
+  const text = tone === 'light' ? '#FAF7EF' : '#1A1614'
+
   if (LOGO_SRC) {
     return (
       <img
@@ -34,22 +38,22 @@ export function Logo({ className }: Props) {
       <text
         x="0"
         y="34"
-        fontFamily="Poppins, sans-serif"
+        fontFamily="Archivo, sans-serif"
         fontSize="27"
         fontWeight="700"
         letterSpacing="-0.4"
-        fill="#1A1614"
+        fill={text}
       >
         INFOMASTER
       </text>
       <text
         x="0"
         y="63"
-        fontFamily="Poppins, sans-serif"
+        fontFamily="Archivo, sans-serif"
         fontSize="25"
         fontWeight="500"
         letterSpacing="0.6"
-        fill="#1A1614"
+        fill={text}
       >
         formación
       </text>
@@ -61,8 +65,7 @@ export function Logo({ className }: Props) {
           y="1"
           width="27"
           height="27"
-          rx="2"
-          fill="#D93D2D"
+                    fill="#D93D2D"
           transform="rotate(18 209 14)"
         />
         <rect
@@ -70,8 +73,7 @@ export function Logo({ className }: Props) {
           y="29"
           width="29"
           height="29"
-          rx="2"
-          fill="#F8D10F"
+                    fill="#F8D10F"
           transform="rotate(-10 215 43)"
         />
         <rect
@@ -79,8 +81,7 @@ export function Logo({ className }: Props) {
           y="47"
           width="18"
           height="18"
-          rx="2"
-          fill="#D93D2D"
+                    fill="#D93D2D"
           transform="rotate(24 192 56)"
         />
       </g>

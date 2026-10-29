@@ -11,6 +11,7 @@ import {
   weekdayShort,
 } from '../../lib/fechas'
 import { LinkButton } from '../ui/Button'
+import { SectionHeading } from '../ui/SectionHeading'
 import { ArrowRightIcon, ClockIcon, MailIcon, PhoneIcon, PinIcon } from '../ui/Icon'
 
 type Upcoming = Convocatoria & {
@@ -66,20 +67,18 @@ function mailHref(conv: Upcoming) {
   return `${CONTACT.emailHref}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
+/** Fecha como dato de tabla: número grande tabular, día y mes en versalitas. */
 function DateStamp({ day }: { day: Date }) {
   return (
-    <div
-      aria-hidden="true"
-      className="flex w-16 shrink-0 flex-col overflow-hidden rounded-xl bg-white text-center ring-1 ring-line sm:w-20"
-    >
-      {/* blanco sobre brand-red = 4,51:1 → AA */}
-      <span className="bg-brand-red py-1 font-heading text-[0.7rem] font-semibold tracking-wide text-white uppercase">
-        {weekdayShort(day)}
-      </span>
-      <span className="pt-1.5 font-heading text-2xl leading-none font-bold tabular-nums sm:text-3xl">
+    <div aria-hidden="true" className="w-16 shrink-0 sm:w-20">
+      <span className="block font-heading text-5xl leading-[0.85] font-bold tracking-[-0.04em] tabular-nums [font-stretch:125%] sm:text-6xl">
         {day.getDate()}
       </span>
-      <span className="pb-2 text-xs text-ink-muted">{monthShort(day)}</span>
+      <span className="mt-2 block font-heading text-xs font-semibold tracking-[0.08em] text-ink-muted uppercase">
+        {weekdayShort(day)}
+        <br />
+        {monthShort(day)}
+      </span>
     </div>
   )
 }
@@ -89,16 +88,16 @@ function CourseRow({ conv }: { conv: Upcoming }) {
   const fechas = datesLabel(conv.days)
 
   return (
-    <li className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-4 rounded-2xl p-4 transition-colors duration-200 hover:bg-white sm:gap-x-6 sm:p-5 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+    <li className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-5 py-6 transition-colors duration-200 hover:bg-cream-deep sm:gap-x-8 lg:-mx-4 lg:grid-cols-[auto_1fr_auto] lg:items-center lg:px-4">
       <DateStamp day={conv.days[0]} />
 
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h4 className="font-heading text-lg font-semibold tracking-tight sm:text-xl">
+          <h4 className="text-xl font-semibold tracking-[-0.01em] sm:text-2xl">
             {conv.curso}
           </h4>
           {badge && (
-            <span className="rounded-full bg-brand-yellow px-2.5 py-0.5 font-heading text-xs font-semibold text-ink">
+            <span className="bg-brand-yellow px-2 py-0.5 font-heading text-xs font-semibold text-ink">
               {badge}
             </span>
           )}
@@ -125,7 +124,7 @@ function CourseRow({ conv }: { conv: Upcoming }) {
           {conv.days.map((day) => (
             <span
               key={day.getTime()}
-              className="rounded-md bg-cream-deep px-2 py-1 font-heading text-xs font-medium tabular-nums text-ink"
+              className="border border-line px-2 py-1 font-heading text-xs font-medium tabular-nums text-ink"
             >
               {weekdayShort(day)} {day.getDate()} {monthShort(day)}
             </span>
@@ -136,7 +135,7 @@ function CourseRow({ conv }: { conv: Upcoming }) {
       <div className="col-span-2 flex gap-2 lg:col-span-1">
         <a
           href={mailHref(conv)}
-          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-2.5 font-heading text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-red-deep lg:flex-none"
+          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 bg-brand-red px-5 py-2.5 font-heading text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-red-deep lg:flex-none"
         >
           <MailIcon className="size-4" />
           Pedir información
@@ -148,7 +147,7 @@ function CourseRow({ conv }: { conv: Upcoming }) {
           href={CONTACT.phoneHref}
           aria-label={`Llamar para preguntar por ${conv.curso}`}
           title={CONTACT.phone}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-ink/15 bg-white/70 text-ink transition-colors duration-200 hover:border-brand-red hover:text-brand-red-deep"
+          className="inline-flex size-11 shrink-0 items-center justify-center border border-ink text-ink transition-colors duration-200 hover:bg-ink hover:text-cream"
         >
           <PhoneIcon className="size-4" />
         </a>
@@ -169,19 +168,14 @@ export function UpcomingCourses({ limit }: Props) {
 
   return (
     <section id="proximos-cursos" className="scroll-mt-24 py-20">
-      <div className="mx-auto max-w-5xl px-5 lg:px-8">
-        <div className="mb-10">
-          <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-            Próximos cursos
-          </h2>
-          <p className="mt-3 max-w-xl text-ink-muted text-pretty">
-            Grupos presenciales con fecha cerrada. Pide información y te contamos horario,
-            precio y plazas disponibles.
-          </p>
-        </div>
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionHeading title="Próximos cursos">
+          Grupos presenciales con fecha cerrada. Pide información y te contamos horario,
+          precio y plazas disponibles.
+        </SectionHeading>
 
         {shown.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-line bg-white/60 p-8 text-center">
+          <div className="border-y border-line py-10">
             <p className="font-heading font-semibold">Ahora mismo no hay grupos con fecha.</p>
             <p className="mt-2 text-sm text-ink-muted">
               Escríbenos a{' '}
@@ -195,11 +189,10 @@ export function UpcomingCourses({ limit }: Props) {
           <div className="space-y-10">
             {groupByMonth(shown).map((group) => (
               <div key={group.label}>
-                <h3 className="mb-2 flex items-center gap-4 font-heading text-sm font-semibold text-ink-muted">
+                <h3 className="border-b border-line pb-3 font-heading text-sm font-semibold tracking-[0.08em] text-ink-muted uppercase">
                   {group.label}
-                  <span aria-hidden="true" className="h-px flex-1 bg-line" />
                 </h3>
-                <ol className="-mx-4 divide-y divide-line sm:-mx-5">
+                <ol className="divide-y divide-line">
                   {group.items.map((conv) => (
                     <CourseRow key={conv.id} conv={conv} />
                   ))}
@@ -210,7 +203,7 @@ export function UpcomingCourses({ limit }: Props) {
         )}
 
         {hidden > 0 && (
-          <div className="mt-10 flex justify-center">
+          <div className="mt-10 border-t border-line pt-8">
             <LinkButton to="/cursos#proximos-cursos" variant="outline">
               Ver las {all.length} fechas
               <ArrowRightIcon className="size-4" />

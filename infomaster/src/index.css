@@ -25,9 +25,33 @@
   --color-ink-muted: #5c534e;
   --color-line: #e4dccd;
 
-  --font-heading: Poppins, ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Una sola familia, dos voces: Archivo ancho (wdth 112–125) para titulares,
+     Archivo normal para el cuerpo. Sus formas rectas casan con los cuadrados
+     del logo; Poppins, con la «o» circular, no. */
+  --font-heading: Archivo, ui-sans-serif, system-ui, sans-serif;
+  --font-body: Archivo, ui-sans-serif, system-ui, sans-serif;
+
+  --animate-square-in: square-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @keyframes square-in {
+    /* --undo es el ángulo del logo con signo contrario: el cuadrado arranca
+       recto y gira hasta su sitio. */
+    from {
+      rotate: var(--undo, 0deg);
+      scale: 0.6;
+      opacity: 0;
+    }
+  }
 }
+
+/* ---------------------------------------------------------------------------
+   Sistema «editorial suizo»
+   - Radio 0 en todo el sitio. El chat IA (components/chat/) es la excepción
+     deliberada: sus formas redondas son parte de la señal «esto es IA».
+   - Filetes de 1px en lugar de tarjetas; sin sombras.
+   - El color de marca aparece como cuadrados (componente <Square />) y en la
+     acción principal, nunca como relleno decorativo.
+--------------------------------------------------------------------------- */
 
 @layer base {
   html {
@@ -48,6 +72,16 @@
     }
   }
 
+  ::selection {
+    background-color: var(--color-brand-yellow);
+    color: var(--color-ink);
+  }
+
+  html {
+    scrollbar-color: var(--color-ink-muted) var(--color-cream-deep);
+    caret-color: var(--color-brand-red-deep);
+  }
+
   body {
     background-color: var(--color-cream);
     color: var(--color-ink);
@@ -63,12 +97,17 @@
   h4 {
     font-family: var(--font-heading);
     color: var(--color-ink);
+    font-stretch: 112%;
     text-wrap: balance;
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
   }
 
   :focus-visible {
     outline: 2px solid var(--color-brand-red-deep);
-    outline-offset: 2px;
-    border-radius: 2px;
+    outline-offset: 3px;
   }
 }

@@ -1,4 +1,6 @@
 import { TESTIMONIALS } from '../../data/testimonials'
+import { SectionHeading } from '../ui/SectionHeading'
+import { Square } from '../ui/Square'
 
 function initials(name: string) {
   return name
@@ -11,59 +13,50 @@ function initials(name: string) {
 
 export function Testimonials() {
   return (
-    <section className="bg-white/60 py-20">
-      <div className="mx-auto max-w-7xl px-5 lg:px-8">
-        <h2 className="mb-3 text-center font-heading text-3xl font-semibold tracking-tight">
-          Lo que dicen nuestros estudiantes
-        </h2>
-        <p className="mx-auto mb-12 max-w-xl text-center text-ink-muted">
-          Historias reales de personas que dieron el siguiente paso.
-        </p>
+    <section className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
+      <SectionHeading title="Lo que dicen nuestros estudiantes">
+        Historias reales de personas que dieron el siguiente paso.
+      </SectionHeading>
 
-        <ul className="grid gap-6 md:grid-cols-3">
-          {TESTIMONIALS.map((item) => (
-            <li
-              key={item.name}
-              className="flex flex-col rounded-2xl bg-cream p-7 ring-1 ring-line transition-shadow duration-200 hover:shadow-lg"
-            >
-              <span
-                aria-hidden="true"
-                className="mb-5 font-heading text-4xl leading-none text-brand-yellow-deep"
-              >
-                &ldquo;
-              </span>
-              <blockquote className="flex-1 leading-relaxed text-ink-muted text-pretty">
-                {item.quote}
-              </blockquote>
+      <ul className="grid md:grid-cols-3">
+        {TESTIMONIALS.map((item) => (
+          <li
+            key={item.name}
+            className="flex flex-col border-t border-line py-8 first:border-t-0 first:pt-0 md:border-t-0 md:border-l md:px-8 md:py-0 md:first:border-l-0 md:first:pl-0"
+          >
+            {/* El cuadrado girado de la marca hace de comilla. */}
+            <Square angle={18} className="mb-6 size-3.5" />
+            <blockquote className="flex-1 text-lg leading-relaxed text-ink text-pretty">
+              {item.quote}
+            </blockquote>
 
-              <div className="mt-7 flex items-center gap-4 border-t border-line pt-5">
-                {item.photo ? (
-                  <img
-                    src={item.photo}
-                    alt=""
-                    width={48}
-                    height={48}
-                    loading="lazy"
-                    decoding="async"
-                    className="size-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <span
-                    aria-hidden="true"
-                    className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-red/10 font-heading text-sm font-semibold text-brand-red-deep"
-                  >
-                    {initials(item.name)}
-                  </span>
-                )}
-                <div>
-                  <p className="font-heading text-sm font-semibold">{item.name}</p>
-                  <p className="text-xs text-ink-muted">{item.role}</p>
-                </div>
+            <div className="mt-8 flex items-center gap-4">
+              {item.photo ? (
+                <img
+                  src={item.photo}
+                  alt=""
+                  width={48}
+                  height={48}
+                  loading="lazy"
+                  decoding="async"
+                  className="size-12 object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="flex size-12 shrink-0 items-center justify-center bg-brand-yellow font-heading text-sm font-semibold text-ink"
+                >
+                  {initials(item.name)}
+                </span>
+              )}
+              <div>
+                <p className="font-heading text-sm font-semibold">{item.name}</p>
+                <p className="text-sm text-ink-muted">{item.role}</p>
               </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+            </div>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

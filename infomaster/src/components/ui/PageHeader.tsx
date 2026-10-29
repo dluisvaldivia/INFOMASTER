@@ -1,22 +1,23 @@
 import type { ReactNode } from 'react'
+import { Square } from './Square'
 
 type Props = {
-  eyebrow: string
   title: string
   intro: string
   children?: ReactNode
 }
 
-export function PageHeader({ eyebrow, title, intro, children }: Props) {
+export function PageHeader({ title, intro, children }: Props) {
   return (
-    <section className="mx-auto max-w-3xl px-5 py-20 lg:px-8 lg:py-28">
-      <p className="mb-4 font-heading text-xs font-semibold tracking-[0.18em] text-brand-red-deep uppercase">
-        {eyebrow}
-      </p>
-      <h1 className="font-heading text-4xl font-bold tracking-tight sm:text-5xl">
-        {title}
-      </h1>
-      <p className="mt-6 text-lg leading-relaxed text-ink-muted text-pretty">{intro}</p>
+    <section className="mx-auto max-w-7xl px-5 pt-14 pb-16 lg:px-8 lg:pt-20 lg:pb-20">
+      <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
+        <h1 className="text-[clamp(2.75rem,7vw,5rem)] leading-[0.95] font-bold tracking-[-0.035em] [font-stretch:125%] lg:col-span-8">
+          {title}
+        </h1>
+        <p className="max-w-[52ch] text-lg leading-relaxed text-ink-muted text-pretty lg:col-span-4 lg:self-end">
+          {intro}
+        </p>
+      </div>
       {children}
     </section>
   )
@@ -25,17 +26,12 @@ export function PageHeader({ eyebrow, title, intro, children }: Props) {
 /** Bloque provisional para las secciones cuyo contenido aún no está definido. */
 export function ComingSoon({ items }: { items: string[] }) {
   return (
-    <div className="mt-12 rounded-2xl border border-dashed border-line bg-white/60 p-8">
-      <p className="mb-5 font-heading text-sm font-semibold">
-        Contenido en preparación
-      </p>
-      <ul className="space-y-3 text-sm text-ink-muted">
+    <div className="mt-14 grid gap-6 border-t border-ink pt-6 lg:grid-cols-12 lg:gap-8">
+      <p className="font-heading text-base font-semibold lg:col-span-4">Contenido en preparación</p>
+      <ul className="divide-y divide-line border-y border-line text-ink-muted lg:col-span-8">
         {items.map((item) => (
-          <li key={item} className="flex gap-3">
-            <span
-              aria-hidden="true"
-              className="mt-2 block size-1.5 shrink-0 rounded-full bg-brand-yellow-deep"
-            />
+          <li key={item} className="flex items-center gap-4 py-3.5">
+            <Square tone="yellow" className="size-2" />
             {item}
           </li>
         ))}

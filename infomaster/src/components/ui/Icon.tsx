@@ -3,6 +3,7 @@ import type { SVGProps } from 'react'
 /**
  * Iconos SVG dibujados a mano (trazo 1.75, caja 24) para no arrastrar una
  * librería entera por ocho glifos. Nunca emojis como iconos.
+ * Remates rectos (square/miter): la marca es de cuadrados, no de círculos.
  */
 type IconProps = SVGProps<SVGSVGElement>
 
@@ -13,8 +14,8 @@ function Base({ children, ...props }: IconProps) {
       fill="none"
       stroke="currentColor"
       strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
       aria-hidden="true"
       focusable="false"
       {...props}

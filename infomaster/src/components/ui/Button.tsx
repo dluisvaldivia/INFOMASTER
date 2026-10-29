@@ -4,20 +4,21 @@ import { Link } from 'react-router'
 type Variant = 'primary' | 'accent' | 'outline'
 type Size = 'md' | 'lg'
 
+// Rectángulos planos: sin radio ni sombra. El movimiento lo pone la flecha
+// (cualquier svg hijo avanza 4px en hover), no el botón.
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-full font-heading font-semibold ' +
-  'cursor-pointer transition-[transform,background-color,box-shadow,color] duration-200 ' +
-  'min-h-11 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60'
+  'group inline-flex items-center justify-center gap-2 font-heading font-semibold ' +
+  'cursor-pointer transition-colors duration-200 min-h-11 ' +
+  '[&>svg:last-child]:transition-transform [&>svg:last-child]:duration-200 ' +
+  'hover:[&>svg:last-child]:translate-x-1 ' +
+  'disabled:cursor-not-allowed disabled:opacity-60'
 
 const VARIANTS: Record<Variant, string> = {
   // blanco sobre brand-red = 4,51:1 → AA
-  primary:
-    'bg-brand-red text-white shadow-[0_6px_20px_-8px_rgba(217,61,45,0.9)] hover:bg-brand-red-deep hover:shadow-[0_10px_28px_-10px_rgba(217,61,45,0.95)]',
+  primary: 'bg-brand-red text-white hover:bg-brand-red-deep',
   // amarillo con texto ink: blanco sobre amarillo sería ilegible
-  accent:
-    'bg-brand-yellow text-ink shadow-[0_6px_20px_-8px_rgba(248,209,15,0.9)] hover:bg-brand-yellow-deep hover:shadow-[0_10px_28px_-10px_rgba(248,209,15,0.95)]',
-  outline:
-    'border-2 border-ink/15 bg-white/70 text-ink hover:border-brand-red hover:text-brand-red-deep',
+  accent: 'bg-brand-yellow text-ink hover:bg-brand-yellow-deep',
+  outline: 'border border-ink text-ink hover:bg-ink hover:text-cream',
 }
 
 const SIZES: Record<Size, string> = {
