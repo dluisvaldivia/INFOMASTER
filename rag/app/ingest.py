@@ -1,17 +1,20 @@
-"""Ingesta del catálogo: Excel -> parquet + índice Chroma.
+"""Ingesta del catálogo: JSONL limpio -> parquet + índice Chroma.
 
-La hoja no es una tabla plana. Es un listado paginado con:
-  - filas "banner" con el nombre de la familia profesional (la categoría NO es
-    una columna: hay que arrastrarla hacia abajo),
-  - la fila de cabecera CODIGO|<sección>|HORAS|PVP repetida una vez por bloque
-    de impresión (210 veces). Su segunda celda NO es un rótulo fijo: lleva la
-    subsección (INGLÉS, ENFERMERÍA, CERTIFICADOS DE PROFESIONALIDAD...), que
-    tampoco es una columna y hay que arrastrar igual que la familia,
-  - y las filas de curso propiamente dichas.
+El catálogo llega ya limpio y en dos ficheros con los mismos ids:
+  - catalog_public.jsonl: nombre, horas, embed_text (enriquecido con tema,
+    sector y público), familias, temas y tipo de formación.
+  - catalog_private.jsonl: por cada fila de origen del Excel, código del
+    proveedor, código oficial (SEPE, UF, MF), PVP y familia/subsección.
+
+Del privado solo se toman los códigos (para que BM25 encuentre un curso por
+su código, sin enseñarlo nunca) y el precio (metadato, jamás al LLM). Y el
+tipo: la etiqueta "Certificado de profesionalidad" del público la llevan
+también las ~2.900 unidades y módulos sueltos de esos certificados, y solo el
+código distingue un certificado completo de uno de sus trozos.
 
 Uso:
     python -m app.ingest --sample 200    # muestra estratificada, segundos
-    python -m app.ingest                 # catálogo completo (13.690 cursos)
+    python -m app.ingest                 # catálogo completo (13.327 cursos)
 """
 from __future__ import annotations
 
@@ -19,8 +22,6 @@ import argparse
 import json
 import re
 import sys
-import unicodedata
-from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -29,286 +30,178 @@ import pandas as pd
 
 from . import config
 
-HEADER_TOKEN = "CODIGO"
-
-# Orden importante: UF y MF antes que el patrón SEPE genérico.
-CODE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("unidad_formativa", re.compile(r"^(UF\d{4})\s+(.*)$", re.S)),
-    ("modulo_formativo", re.compile(r"^(MF\d{4}_\d+)\s+(.*)$", re.S)),
-    ("especialidad", re.compile(r"^([A-Z]{4}\d{3,4}[A-Z]{2})\s+(.*)$", re.S)),
-    ("otro_codigo", re.compile(r"^([A-Z]{2,6}[\d_]{2,}[A-Z0-9_]*)\s+(.*)$", re.S)),
+# Orden importante: el certificado completo manda sobre sus unidades si un
+# curso fusionado trae varios códigos.
+#
+# Un certificado es HOTR0108 / SSCE0110: número dentro de la familia (01, 02…)
+# más el año del real decreto. Las especialidades del SEPE comparten forma pero
+# empiezan por 00 (HOTR0004 "Identificación de Alérgenos…", 10 h): sin esa
+# distinción el chat llamaba certificado de profesionalidad a un curso de 10 h.
+TIPO_POR_CODIGO: list[tuple[str, re.Pattern[str]]] = [
+    ("certificado_profesionalidad", re.compile(r"^[A-Z]{4}(?!00)\d{4}$")),
+    ("especialidad", re.compile(r"^[A-Z]{4}00\d{2}$")),
+    ("modulo_formativo", re.compile(r"^MF\d{4}_\d+$")),
+    ("unidad_formativa", re.compile(r"^UF\d{4}$")),
 ]
 
-NO_RECOMENDABLE = {"unidad_formativa", "modulo_formativo"}
-
-# Dos subsecciones no son un tema, son el tipo de formación del bloque. Es el
-# único sitio del Excel donde consta que un curso es certificado de
-# profesionalidad: el título no lo dice y el código tampoco.
-BLOQUE_TIPO = {
-    "CERTIFICADOS DE PROFESIONALIDAD": "certificado_profesionalidad",
-    "ESPECIALIDADES FORMATIVAS": "especialidad",
+# Sin código que lo respalde, "Certificado de profesionalidad" solo dice en
+# qué bloque del Excel estaba la fila, no qué es el curso: no se afirma.
+TIPO_POR_COURSE_TYPE = {
+    "Especialidad formativa": "especialidad",
 }
 
 TIPO_ETIQUETA = {
     "certificado_profesionalidad": "Certificado de profesionalidad",
     "especialidad": "Especialidad formativa",
-    "unidad_formativa": "Unidad formativa",
-    "modulo_formativo": "Módulo formativo",
+    "unidad_formativa": "Unidad formativa de un certificado de profesionalidad",
+    "modulo_formativo": "Módulo formativo de un certificado de profesionalidad",
 }
 
 
 def document_text(row: Mapping[str, Any]) -> str:
-    """Texto que se embebe. Sin precio, deliberadamente.
+    """Texto que se embebe: el embed_text que ya prepara la limpieza.
 
     Vive aquí, y no en retriever.py, porque el índice denso se construye en la
     ingesta y el BM25 al arrancar la API: si las dos copias se separan, se
     busca sobre un texto distinto del que se embebió y nadie se entera.
 
-    Deliberadamente NO lleva subsección, tipo, ni el código de la columna
-    CODIGO: este texto es idéntico al de antes de existir esas facetas, y esa
-    igualdad es el punto. El set dorado lo demostró dos veces. Sobre un título
-    de 54 caracteres de mediana, "Área: GESTIÓN DE LA INFORMACIÓN Y
-    COMUNICACIÓN." ahoga a "EXCEL AVANZADO" y "hojas de cálculo" deja de
-    recuperarlo. Y con los códigos pasa lo mismo de forma menos evidente: al
-    tocar el texto de unos documentos se mueven los vecinos de otros, y se
-    perdieron casos que no mencionaban ningún código. Un código es un token
-    opaco, justo donde el vector denso no aporta nada y BM25 acierta siempre.
-    Todo lo añadido vive en sparse_text().
+    Sin precio ni códigos, deliberadamente. Un código es un token opaco, justo
+    donde el vector denso no aporta nada y BM25 acierta siempre; meterlo aquí
+    solo mueve a los vecinos. Todo lo léxico vive en sparse_text().
     """
-    parts = [
-        f"{row['titulo']}.",
-        f"Familia profesional: {row['categoria']}.",
-        f"Duración: {int(row['horas'])} horas.",
-    ]
-    if row.get("codigo_oficial"):
-        parts.append(f"Código oficial: {row['codigo_oficial']}.")
-    return " ".join(parts)
-
-
-def codigo_indexable(row: Mapping[str, Any]) -> str:
-    """El código por el que se puede buscar el curso, si no es un id interno.
-
-    VÉRTICE antepone el código al título; Academia Integral lo deja en la
-    columna CODIGO con el título limpio. Se indexa, pero NO se enseña: son
-    referencias de catálogo del proveedor ("CT0229", "SIP-INGLÉS A2*",
-    "AF0341 (Ed.2)-N"), no códigos oficiales del SEPE, y presentarlas como
-    tales a un alumno sería exactamente la clase de imprecisión que el resto
-    del sistema evita. Lo que se muestra sigue siendo codigo_oficial, que solo
-    se rellena desde el título.
-    """
-    codigo_oficial = row.get("codigo_oficial") or ""
-    if codigo_oficial:
-        return codigo_oficial
-    codigo = row.get("codigo") or ""
-    return "" if codigo.isdigit() else codigo
+    return row["embed_text"]
 
 
 def sparse_text(row: Mapping[str, Any]) -> str:
     """Lo que indexa BM25: el documento denso más las facetas léxicas.
 
-    Aquí entran el código del proveedor, la subsección y el tipo. "CT0229",
-    "certificado de profesionalidad" e "inglés" son cosas que el usuario
-    escribe literalmente, y las dos últimas solo constan en la cabecera del
-    bloque del Excel.
+    Aquí entran los códigos, los temas y el tipo. "CT0229", "certificado de
+    profesionalidad" e "inglés" son cosas que el usuario escribe literalmente.
     """
     parts = [document_text(row)]
-    codigo = codigo_indexable(row)
-    if codigo and codigo != row.get("codigo_oficial"):
-        parts.append(f"Código oficial: {codigo}.")
-    subseccion = row.get("subseccion") or ""
-    # Varias familias repiten su nombre como subsección: no aporta nada.
-    if subseccion and subseccion not in BLOQUE_TIPO and subseccion != row.get("categoria"):
-        parts.append(f"Área: {subseccion}.")
+    for codigo in row.get("codigos") or []:
+        parts.append(f"Código: {codigo}.")
+    temas = list(row.get("temas") or [])
+    if temas:
+        parts.append(f"Temas: {', '.join(temas)}.")
     etiqueta = TIPO_ETIQUETA.get(row.get("tipo", ""))
     if etiqueta:
         parts.append(f"Tipo: {etiqueta}.")
     return " ".join(parts)
 
 
-@dataclass
-class Curso:
-    id: str
-    codigo: str
-    codigo_oficial: str          # "" si el título no traía código
-    titulo: str
-    titulo_raw: str
-    categoria: str
-    subseccion: str
-    horas: int
-    precio_eur: float | None
-    tipo: str
-    recomendable: bool
-
-    def to_document(self) -> str:
-        return document_text(asdict(self))
+def _tipo(codigos_oficiales: list[str], course_types: list[str]) -> str:
+    for tipo, pattern in TIPO_POR_CODIGO:
+        if any(pattern.match(c) for c in codigos_oficiales):
+            return tipo
+    for course_type in course_types:
+        if course_type in TIPO_POR_COURSE_TYPE:
+            return TIPO_POR_COURSE_TYPE[course_type]
+    return "curso"
 
 
-def slugify(text: str) -> str:
-    norm = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
-    return re.sub(r"[^a-z0-9]+", "-", norm.lower()).strip("-")
+def _read_jsonl(path: Path) -> dict[str, dict]:
+    rows: dict[str, dict] = {}
+    with path.open(encoding="utf-8") as fh:
+        for n, line in enumerate(fh, 1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if row["id"] in rows:
+                raise SystemExit(f"{path.name}:{n}: id repetido {row['id']}")
+            rows[row["id"]] = row
+    return rows
 
 
-def split_code(titulo_raw: str) -> tuple[str, str, str]:
-    """(titulo_limpio, codigo_oficial, tipo)."""
-    text = " ".join(titulo_raw.split())
-    for tipo, pattern in CODE_PATTERNS:
-        match = pattern.match(text)
-        if match:
-            code, rest = match.group(1), match.group(2).strip()
-            if rest:                       # nunca dejar el título vacío
-                return rest, code, tipo
-    return text, "", "curso"
-
-
-def _cell(value) -> str:
-    if value is None:
-        return ""
-    try:
-        if pd.isna(value):
-            return ""
-    except (TypeError, ValueError):
-        pass
-    return str(value).strip()
-
-
-def parse_excel(path: Path) -> pd.DataFrame:
-    """Recorre la hoja arrastrando la categoría desde las filas banner."""
-    raw = pd.read_excel(path, sheet_name=config.SHEET_NAME, header=None, dtype=str)
-
-    cursos: list[Curso] = []
-    categoria: str | None = None
-    subseccion: str | None = None
-    seen_ids: dict[str, int] = {}
-    stats = {"banners": 0, "headers": 0, "blank": 0, "skipped": 0}
-
-    for _, row in raw.iterrows():
-        cols = [_cell(row[i]) if i in row.index else "" for i in range(4)]
-        codigo, titulo_raw, horas_raw, precio_raw = cols
-
-        if not any(cols):
-            stats["blank"] += 1
-            continue
-        if codigo.upper() == HEADER_TOKEN:
-            # La cabecera es también el separador de subsección: su celda B
-            # trae el rótulo del bloque que empieza aquí.
-            subseccion = " ".join(titulo_raw.split()) or subseccion
-            stats["headers"] += 1
-            continue
-        if codigo and not any(cols[1:]):
-            categoria = " ".join(codigo.split())
-            subseccion = None          # cada familia reabre sus subsecciones
-            stats["banners"] += 1
-            continue
-        if not titulo_raw or not horas_raw:
-            stats["skipped"] += 1
-            continue
-        if categoria is None:
-            raise ValueError(f"Curso antes del primer banner de familia: {cols!r}")
-        if subseccion is None:
-            raise ValueError(f"Curso antes de la primera cabecera de bloque: {cols!r}")
-
-        try:
-            horas = int(float(horas_raw.replace(",", ".")))
-        except ValueError:
-            stats["skipped"] += 1
-            continue
-
-        try:
-            precio: float | None = float(precio_raw.replace(",", "."))
-        except ValueError:
-            precio = None          # '#REF!': fórmula rota en el Excel de origen
-
-        titulo, codigo_oficial, tipo = split_code(titulo_raw)
-        # El bloque manda sobre el regex, salvo en UF y MF: dentro de un
-        # certificado siguen siendo unidades sueltas y no se recomiendan.
-        bloque_tipo = BLOQUE_TIPO.get(subseccion)
-        if bloque_tipo and tipo not in NO_RECOMENDABLE:
-            tipo = bloque_tipo
-
-        base_id = f"{codigo}-{slugify(titulo)[:40]}".strip("-")
-        seen_ids[base_id] = seen_ids.get(base_id, 0) + 1
-        curso_id = base_id if seen_ids[base_id] == 1 else f"{base_id}-{seen_ids[base_id]}"
-
-        cursos.append(
-            Curso(
-                id=curso_id,
-                codigo=codigo,
-                codigo_oficial=codigo_oficial,
-                titulo=titulo,
-                titulo_raw=" ".join(titulo_raw.split()),
-                categoria=categoria,
-                subseccion=subseccion,
-                horas=horas,
-                precio_eur=precio,
-                tipo=tipo,
-                recomendable=tipo not in NO_RECOMENDABLE,
-            )
+def load_catalog(catalog_dir: Path) -> pd.DataFrame:
+    """Une público y privado por id en una fila por curso."""
+    public = _read_jsonl(catalog_dir / config.PUBLIC_JSONL)
+    private = _read_jsonl(catalog_dir / config.PRIVATE_JSONL)
+    if public.keys() != private.keys():
+        solo_pub = len(public.keys() - private.keys())
+        solo_priv = len(private.keys() - public.keys())
+        raise SystemExit(
+            f"public y private no tienen los mismos ids "
+            f"({solo_pub} solo en public, {solo_priv} solo en private)"
         )
 
-    df = pd.DataFrame([asdict(c) for c in cursos])
-    df.attrs["stats"] = stats
-    return df
+    cursos = []
+    for curso_id, pub in public.items():
+        sources = private[curso_id]["sources"]
+        oficiales = [s["official_code"] for s in sources if s.get("official_code")]
+        # El código del proveedor es un id interno cuando es solo numérico.
+        proveedor = [s["code"] for s in sources if s.get("code") and not str(s["code"]).isdigit()]
+        precios = [s["price"] for s in sources if s.get("price") is not None]
+        familias = pub["filters"]["families"]
+        cursos.append({
+            "id": curso_id,
+            "titulo": pub["name"],
+            "horas": int(pub["hours"]),
+            "embed_text": pub["embed_text"],
+            # La primera familia es la que se enseña; todas cuentan para el
+            # impulso de categoría y los conteos.
+            "categoria": familias[0] if familias else "",
+            "familias": familias,
+            "temas": pub["filters"]["topics"],
+            "tipo": _tipo(oficiales, pub["filters"]["course_types"]),
+            "codigos": list(dict.fromkeys(oficiales + proveedor)),
+            "precio_eur": min(precios) if precios else None,
+            "pending_upload": bool(private[curso_id].get("pending_upload")),
+        })
+    return pd.DataFrame(cursos)
 
 
 def validate(df: pd.DataFrame, strict: bool) -> None:
-    """El parseo se valida SIEMPRE sobre el fichero completo, aun si luego se
-    indexa una muestra: lo frágil es el parseo, no el muestreo."""
+    """La carga se valida SIEMPRE sobre el catálogo completo, aun si luego se
+    indexa una muestra."""
     problems: list[str] = []
-    n, cats = len(df), df["categoria"].nunique()
-    subs = df["subseccion"].nunique()
-    missing_price = int(df["precio_eur"].isna().sum())
+    n = len(df)
+    cats = df["familias"].explode().nunique()
 
     if n != config.EXPECTED_COURSES:
         problems.append(f"cursos={n}, esperados {config.EXPECTED_COURSES}")
     if cats != config.EXPECTED_CATEGORIES:
-        problems.append(f"categorías={cats}, esperadas {config.EXPECTED_CATEGORIES}")
-    if subs != config.EXPECTED_SUBSECTIONS:
-        problems.append(f"subsecciones={subs}, esperadas {config.EXPECTED_SUBSECTIONS}")
-    if missing_price != config.EXPECTED_MISSING_PRICE:
-        problems.append(
-            f"precios rotos (#REF!)={missing_price}, esperados {config.EXPECTED_MISSING_PRICE}"
-        )
+        problems.append(f"familias={cats}, esperadas {config.EXPECTED_CATEGORIES}")
     if (df["categoria"].str.strip() == "").any():
-        problems.append("hay cursos sin categoría")
-    if (df["subseccion"].str.strip() == "").any():
-        problems.append("hay cursos sin subsección")
-    if (df["codigo"].str.upper() == HEADER_TOKEN).any():
-        problems.append("se han colado filas de cabecera")
-    if df["horas"].isna().any() or (df["horas"] <= 0).any():
-        problems.append("horas no numéricas o <= 0")
-    if df["id"].duplicated().any():
-        problems.append("ids duplicados")
+        problems.append("hay cursos sin familia")
+    if (df["titulo"].str.strip() == "").any():
+        problems.append("hay cursos sin nombre")
+    if (df["embed_text"].str.strip() == "").any():
+        problems.append("hay cursos sin embed_text")
+    if (df["horas"] <= 0).any():
+        problems.append("horas <= 0")
 
     if not problems:
-        print(
-            f"  validación: OK ({n} cursos, {cats} familias, {subs} subsecciones, "
-            f"{missing_price} precios rotos)"
-        )
+        tipos = df["tipo"].value_counts().to_dict()
+        print(f"  validación: OK ({n} cursos, {cats} familias, tipos {tipos})")
         return
 
     message = "El catálogo no cuadra con el perfil esperado:\n  - " + "\n  - ".join(problems)
     if strict:
         raise SystemExit(
-            f"{message}\n\nSi el Excel ha cambiado a propósito, revisa los valores "
+            f"{message}\n\nSi el catálogo ha cambiado a propósito, revisa los valores "
             f"EXPECTED_* en app/config.py y vuelve a ejecutar."
         )
     print(f"  AVISO: {message}", file=sys.stderr)
 
 
 # --- Muestreo -------------------------------------------------------------
+def _tiene_codigo(codigo: str):
+    return lambda d: d["codigos"].apply(lambda cs: codigo in cs)
+
+
 # Casos borde forzados: el set dorado de eval/preguntas.yaml apunta a ellos,
 # así que deben estar en la muestra o las pruebas no valdrían en modo test.
 FORCED_CASES: list[tuple[str, object]] = [
-    ("codigo SEPE", lambda d: d["codigo_oficial"] == "AFDA001PO"),
+    ("codigo SEPE", _tiene_codigo("AFDA001PO")),
+    # Código que solo es del proveedor, no del SEPE (Academia Integral).
+    ("codigo de proveedor", _tiene_codigo("AF0514-N")),
+    ("certificado completo", _tiene_codigo("SSCE0110")),
     ("unidad formativa", lambda d: d["tipo"] == "unidad_formativa"),
     ("modulo formativo", lambda d: d["tipo"] == "modulo_formativo"),
-    ("precio roto (#REF!)", lambda d: d["precio_eur"].isna()),
     ("certificado de profesionalidad", lambda d: d["tipo"] == "certificado_profesionalidad"),
-    # Código que solo está en la columna CODIGO, no en el título (Academia
-    # Integral). Se fija uno concreto, como con AFDA001PO, porque el set dorado
-    # pregunta por él literalmente.
-    ("codigo en columna", lambda d: d["codigo"] == "AF0514-N"),
     ("sigla PRL", lambda d: d["titulo"].str.contains("Prevención de Riesgos", case=False, regex=False)),
+    ("mando intermedio", lambda d: d["titulo"].str.contains("mando intermedio", case=False, regex=False)),
     ("marca Excel", lambda d: d["titulo"].str.contains("Excel", case=False, regex=False)),
     ("soldadura", lambda d: d["titulo"].str.contains("soldadura", case=False, regex=False)),
     ("cocina", lambda d: d["titulo"].str.contains("cocina", case=False, regex=False)),
@@ -322,11 +215,10 @@ def build_sample(df: pd.DataFrame, per_category: int) -> pd.DataFrame:
 
     Un head(200) daría solo ACTIVIDAD FÍSICA Y DEL DEPORTE y no probaría nada.
     """
-    recomendables = df[df["recomendable"]]
     # Bucle explícito en vez de groupby.apply: pandas 3.0 cambió su semántica.
     stratified = pd.concat([
         grupo.sample(min(per_category, len(grupo)), random_state=0)
-        for _, grupo in recomendables.groupby("categoria", sort=True)
+        for _, grupo in df.groupby("categoria", sort=True)
     ])
     chosen_ids = set(stratified["id"])
     forced_rows, forced_log = [], []
@@ -336,8 +228,7 @@ def build_sample(df: pd.DataFrame, per_category: int) -> pd.DataFrame:
         if matches.empty:
             print(f"  aviso: caso forzado '{label}' sin coincidencias", file=sys.stderr)
             continue
-        already = matches[matches["id"].isin(chosen_ids)]
-        if not already.empty:
+        if matches["id"].isin(chosen_ids).any():
             forced_log.append(f"{label} (ya en muestra)")
             continue
         pick = matches.iloc[[0]]
@@ -345,16 +236,16 @@ def build_sample(df: pd.DataFrame, per_category: int) -> pd.DataFrame:
         chosen_ids.add(pick.iloc[0]["id"])
         forced_log.append(label)
 
-    # Un título duplicado, con sus dos copias, para probar la deduplicación.
+    # Un nombre repetido con horas distintas, con todas sus copias, para
+    # probar que se enseñan las dos duraciones y no se deduplican.
     dup_titles = df[df["titulo"].duplicated(keep=False)]
     if not dup_titles.empty:
         first = dup_titles.iloc[0]["titulo"]
-        pair = dup_titles[dup_titles["titulo"] == first]
-        pair = pair[~pair["id"].isin(chosen_ids)]
-        if not pair.empty:
-            forced_rows.append(pair)
-            chosen_ids.update(pair["id"])
-            forced_log.append("título duplicado")
+        group = dup_titles[(dup_titles["titulo"] == first) & ~dup_titles["id"].isin(chosen_ids)]
+        if not group.empty:
+            forced_rows.append(group)
+            chosen_ids.update(group["id"])
+            forced_log.append("nombre repetido")
 
     sample = pd.concat([stratified, *forced_rows]) if forced_rows else stratified
     sample = sample.drop_duplicates(subset="id").reset_index(drop=True)
@@ -368,10 +259,8 @@ def build_index(df: pd.DataFrame) -> None:
     import chromadb
     from sentence_transformers import SentenceTransformer
 
-    documents = [
-        Curso(**row).to_document()
-        for row in df.to_dict("records")
-    ]
+    records = df.to_dict("records")
+    documents = [document_text(row) for row in records]
 
     print(f"  cargando {config.EMBED_MODEL}…")
     model = SentenceTransformer(config.EMBED_MODEL)
@@ -384,19 +273,14 @@ def build_index(df: pd.DataFrame) -> None:
     )
 
     metadatas = []
-    for row in df.to_dict("records"):
+    for row in records:
         meta = {
-            "codigo": row["codigo"],
             "titulo": row["titulo"],
             "categoria": row["categoria"],
-            "subseccion": row["subseccion"],
             "horas": int(row["horas"]),
             "tipo": row["tipo"],
-            "recomendable": bool(row["recomendable"]),
         }
-        if row["codigo_oficial"]:      # "" = el título no traía código
-            meta["codigo_oficial"] = row["codigo_oficial"]
-        # Chroma no admite None: se omite la clave si el PVP venía roto.
+        # Chroma no admite None: se omite la clave si no hay precio.
         if row["precio_eur"] is not None and not pd.isna(row["precio_eur"]):
             meta["precio_eur"] = float(row["precio_eur"])
         metadatas.append(meta)
@@ -411,12 +295,15 @@ def build_index(df: pd.DataFrame) -> None:
     collection = client.create_collection(
         config.COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
-    collection.add(
-        ids=df["id"].tolist(),
-        embeddings=embeddings.tolist(),
-        documents=documents,
-        metadatas=metadatas,
-    )
+    # Chroma limita el tamaño de cada add; el catálogo completo lo supera.
+    step = 5000
+    for start in range(0, len(records), step):
+        collection.add(
+            ids=df["id"].iloc[start:start + step].tolist(),
+            embeddings=embeddings[start:start + step].tolist(),
+            documents=documents[start:start + step],
+            metadatas=metadatas[start:start + step],
+        )
     print(f"  Chroma: {collection.count()} documentos en {config.CHROMA_DIR}")
 
 
@@ -424,17 +311,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Ingesta del catálogo de cursos")
     parser.add_argument("--sample", type=int, metavar="N",
                         help="indexar solo ~N cursos (muestra estratificada por familia)")
-    parser.add_argument("--excel", type=Path, help="ruta alternativa al .xlsx")
+    parser.add_argument("--catalog-dir", type=Path, default=config.CATALOG_DIR,
+                        help="carpeta con catalog_public.jsonl y catalog_private.jsonl")
     parser.add_argument("--no-embed", action="store_true",
-                        help="solo parsear y escribir parquet (sin Chroma ni modelo)")
+                        help="solo cargar y escribir parquet (sin Chroma ni modelo)")
     parser.add_argument("--no-strict", action="store_true",
                         help="avisar en vez de abortar si el catálogo no cuadra")
     args = parser.parse_args()
 
-    path = args.excel or config.excel_path()
-    print(f"Leyendo {path}")
-    df = parse_excel(path)
-    print(f"  filas: {df.attrs['stats']}")
+    public_path = args.catalog_dir / config.PUBLIC_JSONL
+    print(f"Leyendo {args.catalog_dir}")
+    df = load_catalog(args.catalog_dir)
     validate(df, strict=not args.no_strict)
 
     if args.sample:
@@ -451,11 +338,10 @@ def main() -> None:
         "catalog_mode": mode,
         "n_courses_indexed": int(len(indexed)),
         "n_courses_total": int(len(df)),
-        "n_categories": int(indexed["categoria"].nunique()),
-        "sheet": config.SHEET_NAME,
-        "source_file": path.name,
+        "n_categories": int(indexed["familias"].explode().nunique()),
+        "source_file": public_path.name,
         "catalog_version": datetime.fromtimestamp(
-            path.stat().st_mtime, timezone.utc
+            public_path.stat().st_mtime, timezone.utc
         ).date().isoformat(),
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }

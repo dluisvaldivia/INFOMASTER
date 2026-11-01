@@ -58,14 +58,18 @@ def main() -> int:
         passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
         print(f"  {'OK  ' if ok else 'FALLA'} {case['id']:24} filtro respetado en {len(hits)} hits")
 
-    for case in spec.get("recomendables", []):
+    # Los códigos se buscan pero nunca se enseñan: ni en sources ni en el
+    # contexto que ve el LLM.
+    from app.prompts import format_context
+    for case in spec.get("sin_codigos", []):
         hits = index.search(case["pregunta"])
-        bad = [h.titulo for h in hits if h.tipo in case["prohibe_tipos"]]
-        ok = not bad
+        expuesto = [h.as_source() for h in hits]
+        contexto = format_context(hits)
+        ok = bool(hits) and case["pregunta"] not in contexto and all(
+            case["pregunta"] not in str(s) and "codigo" not in "".join(s) for s in expuesto
+        )
         passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
-        print(f"  {'OK  ' if ok else 'FALLA'} {case['id']:24} sin UF/MF entre los sugeridos")
-        if bad:
-            print(f"        se colaron: {bad}")
+        print(f"  {'OK  ' if ok else 'FALLA'} {case['id']:24} código fuera de sources y contexto")
 
     print(f"\n{passed} OK, {failed} fallos")
     return 1 if failed else 0

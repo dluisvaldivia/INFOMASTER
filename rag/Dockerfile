@@ -18,10 +18,10 @@ RUN python -c "from sentence_transformers import SentenceTransformer; \
 
 COPY app ./app
 COPY eval ./eval
-COPY data/CATALOGO.xlsx ./data/CATALOGO.xlsx
+COPY data/Catalogue/catalog_public.jsonl data/Catalogue/catalog_private.jsonl ./data/Catalogue/
 
-# Cambia a `python -m app.ingest` para el catálogo completo (13.690 cursos).
-RUN python -m app.ingest --sample 200
+# Catálogo completo (13.327 cursos). Para un Space de pruebas: --sample 200.
+RUN python -m app.ingest
 
 EXPOSE 7860
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

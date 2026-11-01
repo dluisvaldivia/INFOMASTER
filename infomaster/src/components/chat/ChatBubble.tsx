@@ -17,7 +17,7 @@ export function ChatBubble({ message }: Props) {
       <p
         className={
           isAi
-            ? 'max-w-[85%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm leading-relaxed text-[var(--ai-ink)] ring-1 ring-[var(--ai-panel-border)]'
+            ? 'max-w-[85%] whitespace-pre-line rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm leading-relaxed text-[var(--ai-ink)] ring-1 ring-[var(--ai-panel-border)]'
             : 'max-w-[85%] rounded-2xl rounded-tr-sm bg-[var(--ai-red)] px-4 py-3 text-sm leading-relaxed text-white'
         }
       >

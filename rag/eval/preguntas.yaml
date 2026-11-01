@@ -4,8 +4,8 @@
 # 'espera' es una subcadena (sin distinguir mayúsculas ni acentos) que debe
 # aparecer en el título de alguno de los 6 primeros resultados. 'espera_tipo'
 # exige que alguno de esos 6 sea de ese tipo.
-# Todos los casos existen también en la muestra de --sample 200, por los casos
-# forzados de ingest.py, así que este fichero vale igual en test y en completo.
+# Los casos marcados en FORCED_CASES de ingest.py existen también en la
+# muestra de --sample 200; el resto solo se garantiza con el catálogo completo.
 
 recuperacion:
   - id: sigla-prl
@@ -13,13 +13,15 @@ recuperacion:
     espera: "riesgos"
   - id: sigla-prl-coloquial
     pregunta: "cursos de PRL para mandos intermedios"
-    espera: "mando intermedio"
+    espera: "mandos intermedios"
   - id: marca-excel
     pregunta: "Excel"
     espera: "excel"
   - id: marca-excel-frase
     pregunta: "quiero aprender hojas de cálculo"
-    espera: "excel"
+    # Con el catálogo limpio salen los cursos llamados "hojas de cálculo",
+    # no los de "Excel": ambos son respuesta correcta.
+    espera: "hojas de cálculo"
   - id: oficio-soldadura
     pregunta: "soldadura"
     espera: "soldadura"
@@ -35,16 +37,65 @@ recuperacion:
   - id: idiomas
     pregunta: "cursos de inglés"
     espera: "ingl"
-  # El código va en la columna CODIGO y no en el título: hasta que la ingesta
-  # lo recogió, este curso era inencontrable por su código.
+  # Código del proveedor, no del SEPE: solo consta en catalog_private.jsonl.
   - id: codigo-en-columna
     pregunta: "AF0514-N"
     espera: "gestión auxiliar de reproducción"
-  # "certificado de profesionalidad" no aparece en ningún título: solo consta
-  # en la cabecera del bloque del Excel, que es la subsección.
+  # "certificado de profesionalidad" no aparece en ningún título: es el tipo.
   - id: tipo-certificado
     pregunta: "certificado de profesionalidad"
     espera_tipo: "certificado_profesionalidad"
+  # Casos con nombres reales del catálogo limpio (verificados en el JSONL).
+  - id: tema-alergenos
+    pregunta: "alérgenos para mi restaurante"
+    espera: "alérgenos"
+  - id: tema-igualdad
+    pregunta: "tenemos que hacer el plan de igualdad"
+    espera: "planes de igualdad"
+  - id: tema-rgpd
+    pregunta: "formación en RGPD para la oficina"
+    espera: "protección de datos"
+  - id: tema-ia
+    pregunta: "inteligencia artificial para empresas"
+    espera: "inteligencia artificial aplicada a la empresa"
+  - id: tema-powerbi
+    pregunta: "power bi"
+    espera: "power bi"
+  - id: oficio-socorrista
+    pregunta: "quiero trabajar de socorrista en una piscina"
+    espera: "socorrismo en instalaciones acuáticas"
+  - id: oficio-camarero
+    pregunta: "formación para camareros de barra"
+    espera: "barra"
+  - id: oficio-soldador-tig
+    pregunta: "soldadura TIG"
+    espera: "tig"
+  - id: oficio-geriatria
+    pregunta: "auxiliar para una residencia de mayores"
+    espera: "auxiliar"
+  - id: nombre-corto-irpf
+    pregunta: "IRPF"
+    espera: "irpf"
+  - id: python-intro
+    pregunta: "empezar a programar en python"
+    espera: "programación en python"
+  - id: ingles-en-ingles
+    pregunta: "English courses B1 level"
+    espera: "inglés b1"
+  # Códigos que solo están en catalog_private.jsonl: BM25 los indexa.
+  - id: codigo-cp-docencia
+    pregunta: "SSCE0110"
+    espera: "docencia de la formación profesional para el empleo"
+  - id: codigo-cp-cocina
+    pregunta: "¿tenéis el HOTR0108?"
+    espera: "operaciones básicas de cocina"
+  - id: codigo-especialidad
+    pregunta: "ADGD078PO"
+    espera: "liderazgo y dirección de organizaciones"
+  - id: codigo-modulo
+    pregunta: "MF0272_2"
+    espera: "primeros auxilios"
+    espera_tipo: "modulo_formativo"
 
 # Una categoría mal adivinada por el clasificador no puede esconder el acierto.
 categoria_blanda:
@@ -66,9 +117,14 @@ filtros:
     pregunta: "algo de sanidad"
     filtros: {categoria: "SANIDAD"}
     categoria: "SANIDAD"
+  - id: horas-max-prl-corto
+    pregunta: "algo cortito de prevención de riesgos"
+    filtros: {categoria: "PREVENCIÓN DE RIESGOS LABORALES", horas_max: 30}
+    max_horas: 30
 
-# UF y MF no se recomiendan, pero sí se localizan si el usuario nombra el código.
-recomendables:
-  - id: uf-no-recomendada
-    pregunta: "cursos de formación"
-    prohibe_tipos: ["unidad_formativa", "modulo_formativo"]
+# Los códigos se buscan, pero no se enseñan: ni en sources ni en el contexto.
+sin_codigos:
+  - id: codigo-oculto-sepe
+    pregunta: "AFDA001PO"
+  - id: codigo-oculto-cp
+    pregunta: "SSCE0110"

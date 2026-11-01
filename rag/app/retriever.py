@@ -1,8 +1,7 @@
 """Recuperación híbrida: BM25 + embeddings densos, fusionados con RRF.
 
-El único texto indexable de este catálogo es un título corto (mediana 54
-caracteres) lleno de siglas y códigos: UF2361, MF0013_2, PRL, Excel, AFDA001PO.
-Los embeddings densos fallan justo ahí, y BM25 falla con sinónimos y lenguaje
+Los títulos son cortos y llenos de siglas y códigos: UF2361, MF0013_2, PRL,
+Excel, AFDA001PO. Los embeddings densos fallan justo ahí, y BM25 falla con sinónimos y lenguaje
 coloquial ("quiero trabajar de cocinero"). Ninguno de los dos basta solo.
 """
 from __future__ import annotations
@@ -33,20 +32,20 @@ class Hit:
     id: str
     titulo: str
     categoria: str
-    subseccion: str
     horas: int
     tipo: str
-    codigo: str
-    codigo_oficial: str | None
     score: float
+    # El usuario escribió un código y es el de este curso. El código no se
+    # enseña, así que sin esta marca el modelo no sabe que lo ha encontrado y
+    # contesta "no tenemos ningún curso con ese código".
+    coincide_codigo: bool = False
 
     def as_source(self) -> dict[str, Any]:
-        # Nunca se expone precio_eur: el chat no cita precios.
+        # Nunca se exponen precio ni códigos: se buscan, pero no se enseñan.
         return {
             "titulo": self.titulo,
             "categoria": self.categoria,
             "horas": self.horas,
-            "codigo_oficial": self.codigo_oficial,
         }
 
 
@@ -60,9 +59,16 @@ class CatalogIndex:
 
         self.df = pd.read_parquet(config.PARQUET_PATH)
         self.df["horas"] = self.df["horas"].astype(int)
+        # El parquet devuelve las listas como arrays de numpy.
+        for col in ("familias", "temas", "codigos"):
+            self.df[col] = self.df[col].apply(list)
         self.by_id = {row["id"]: row for row in self.df.to_dict("records")}
 
         self.ids = self.df["id"].tolist()
+        self.by_code: dict[str, list[str]] = {}
+        for row in self.df.to_dict("records"):
+            for codigo in row["codigos"]:
+                self.by_code.setdefault(codigo.upper(), []).append(row["id"])
         # BM25 indexa el texto enriquecido; Chroma, el denso. Ver ingest.py.
         self.bm25 = BM25Okapi(
             [tokenize(sparse_text(row)) for row in self.df.to_dict("records")]
@@ -81,7 +87,7 @@ class CatalogIndex:
     # --- filtros ---------------------------------------------------------
     @property
     def categorias(self) -> list[str]:
-        return sorted(self.df["categoria"].unique().tolist())
+        return sorted(self.df["familias"].explode().dropna().unique().tolist())
 
     def _mask(self, filters: dict[str, Any]) -> pd.Series:
         mask = pd.Series(True, index=self.df.index)
@@ -100,8 +106,6 @@ class CatalogIndex:
             mask &= self.df["horas"] >= int(filters["horas_min"])
         if filters.get("horas_max") is not None:
             mask &= self.df["horas"] <= int(filters["horas_max"])
-        if filters.get("recomendable", True):
-            mask &= self.df["recomendable"]
         return mask
 
     def _where(self, filters: dict[str, Any]) -> dict | None:
@@ -117,8 +121,6 @@ class CatalogIndex:
             clauses.append({"horas": {"$gte": int(filters["horas_min"])}})
         if filters.get("horas_max") is not None:
             clauses.append({"horas": {"$lte": int(filters["horas_max"])}})
-        if filters.get("recomendable", True):
-            clauses.append({"recomendable": {"$eq": True}})
         if not clauses:
             return None
         return clauses[0] if len(clauses) == 1 else {"$and": clauses}
@@ -127,11 +129,6 @@ class CatalogIndex:
     def search(self, query: str, filters: dict[str, Any] | None = None,
                top_k: int = config.FINAL_TOP_K) -> list[Hit]:
         filters = dict(filters or {})
-        # Si el usuario nombra un código explícito, se levanta el filtro de
-        # recomendables: UF/MF no se sugieren, pero sí se localizan.
-        if re.search(r"\b(UF\d{4}|MF\d{4}_\d|[A-Z]{4}\d{3,4}[A-Z]{2})\b", query.upper()):
-            filters["recomendable"] = False
-
         allowed = set(self.df.loc[self._mask(filters), "id"])
         if not allowed:
             return []
@@ -151,7 +148,7 @@ class CatalogIndex:
         if categoria:
             for doc_id in fused:
                 row = self.by_id.get(doc_id)
-                if row is not None and row["categoria"] == categoria:
+                if row is not None and categoria in row["familias"]:
                     fused[doc_id] += config.CATEGORY_BOOST
 
         ordered = sorted(fused.items(), key=lambda kv: kv[1], reverse=True)
@@ -162,7 +159,27 @@ class CatalogIndex:
         # "cursos de PRL para mandos intermedios", denso nº1) se cae del top-6
         # y en su lugar entra un "Curso de Decorador de Interiores".
         lideres = [r[0] for r in (dense_rank, sparse_rank) if r and r[0] in allowed]
-        return self._dedupe(ordered, top_k, lideres)
+
+        # Coincidencia exacta de código: va primero, por encima de la fusión.
+        exactos = [i for i in self._code_matches(query) if i in allowed]
+        if exactos:
+            ordered = [(i, 1.0) for i in exactos] + [kv for kv in ordered if kv[0] not in exactos]
+        hits = self._dedupe(ordered, top_k, lideres)
+        for hit in hits:
+            hit.coincide_codigo = hit.id in exactos
+        if exactos:
+            # Con el código resuelto, el resto son coincidencias de relleno que
+            # solo confunden al modelo: llegó a contestar "no lo tenemos".
+            hits = [h for h in hits if h.coincide_codigo]
+        return hits
+
+    def _code_matches(self, query: str) -> list[str]:
+        ids: list[str] = []
+        for token in re.findall(r"[A-Z0-9][A-Z0-9_\-]{3,}", query.upper()):
+            for doc_id in self.by_code.get(token, []):
+                if doc_id not in ids:
+                    ids.append(doc_id)
+        return ids
 
     def _dense(self, query: str, filters: dict[str, Any]) -> list[str]:
         vector = self.model.encode(
@@ -188,9 +205,24 @@ class CatalogIndex:
         candidates.sort(key=lambda kv: kv[1], reverse=True)
         return [doc_id for doc_id, _ in candidates[: config.SPARSE_TOP_K]]
 
+    @staticmethod
+    def _hit(row: dict[str, Any], score: float) -> Hit:
+        return Hit(
+            id=row["id"],
+            titulo=row["titulo"],
+            categoria=row["categoria"],
+            horas=int(row["horas"]),
+            tipo=row["tipo"],
+            score=score,
+        )
+
     def _dedupe(self, ordered: list[tuple[str, float]], top_k: int,
                 garantizados: list[str] | None = None) -> list[Hit]:
-        """52 títulos del catálogo están repetidos; no se muestran dos veces.
+        """No muestra dos veces el mismo curso.
+
+        La limpieza ya fusionó los que repetían nombre y horas; los que quedan
+        con el mismo nombre tienen duraciones distintas ("Excel Avanzado" de 40
+        y de 100 h) y son cursos distintos, así que la clave es nombre + horas.
 
         `garantizados` son ids que deben aparecer aunque la fusión los deje
         fuera: ocupan las últimas plazas, para no alterar el orden de arriba.
@@ -204,7 +236,7 @@ class CatalogIndex:
             row = self.by_id.get(doc_id)
             if row is None:
                 continue
-            key = normalize(row["titulo"])
+            key = (normalize(row["titulo"]), int(row["horas"]))
             if key in seen:
                 continue
             if doc_id in pendientes:
@@ -213,39 +245,19 @@ class CatalogIndex:
                 continue          # el hueco que queda es de un garantizado
             seen.add(key)
             hits.append(
-                Hit(
-                    id=doc_id,
-                    titulo=row["titulo"],
-                    categoria=row["categoria"],
-                    subseccion=row.get("subseccion", ""),
-                    horas=int(row["horas"]),
-                    tipo=row["tipo"],
-                    codigo=row["codigo"],
-                    codigo_oficial=row.get("codigo_oficial") or None,
-                    score=score,
-                )
+                self._hit(row, score)
             )
             if len(hits) + len(pendientes) >= top_k:
                 break
 
         for doc_id in pendientes:
             row = self.by_id[doc_id]
-            key = normalize(row["titulo"])
+            key = (normalize(row["titulo"]), int(row["horas"]))
             if key in seen:                     # ya está, con otro id
                 continue
             seen.add(key)
             hits.append(
-                Hit(
-                    id=doc_id,
-                    titulo=row["titulo"],
-                    categoria=row["categoria"],
-                    subseccion=row.get("subseccion", ""),
-                    horas=int(row["horas"]),
-                    tipo=row["tipo"],
-                    codigo=row["codigo"],
-                    codigo_oficial=row.get("codigo_oficial") or None,
-                    score=dict(ordered).get(doc_id, 0.0),
-                )
+                self._hit(row, dict(ordered).get(doc_id, 0.0))
             )
         return hits[:top_k]
 
@@ -259,7 +271,13 @@ class CatalogIndex:
         """
         filters = dict(filters or {})
         subset = self.df.loc[self._mask(filters)]
-        counts = subset["categoria"].value_counts().to_dict()
+        categoria = filters.get("categoria")
+        if categoria:
+            # Igual que en search(), la familia es del clasificador; aquí sí
+            # filtra, porque "¿cuántos de sanidad?" pregunta justo por ella.
+            subset = subset[subset["familias"].apply(lambda fs: categoria in fs)]
+        # Un curso en dos familias cuenta en las dos; el total, una vez.
+        counts = subset["familias"].explode().value_counts().to_dict()
         return {
             "total": int(len(subset)),
             "por_categoria": {k: int(v) for k, v in counts.items()},

@@ -169,14 +169,14 @@ def build_graph(index: CatalogIndex, catalog_mode: str = "completo"):
                 messages=messages,
                 **_extra_args(),
             )
-            answer = (completion.choices[0].message.content or "").strip()
+            answer = prompts.limpiar_formato(completion.choices[0].message.content or "")
             # Un modelo de razonamiento puede gastar todo el presupuesto pensando
             # y devolver content vacío: eso es un fallo, no una respuesta.
             if not answer:
                 raise RuntimeError("respuesta vacía del modelo (¿max_tokens agotado razonando?)")
         except Exception as exc:                            # noqa: BLE001
             return {
-                "answer": prompts.FALLBACK["otro"],
+                "answer": prompts.FALLBACK["error"],
                 "sources": [],
                 "llm_error": f"responder: {type(exc).__name__}: {exc}",
             }
@@ -220,13 +220,34 @@ def build_graph(index: CatalogIndex, catalog_mode: str = "completo"):
 
 
 def _aggregate_context(aggregate: dict[str, Any], filters: dict[str, Any]) -> str:
-    lines = [f"Total de cursos que cumplen la consulta: {aggregate['total']}."]
+    # Sin decir QUÉ se ha contado, el modelo recibe "426" y contesta que no
+    # sabe cuántos certificados hay.
+    criterio = []
+    if filters.get("tipo"):
+        criterio.append(prompts.TIPO_PLURAL.get(filters["tipo"], filters["tipo"]))
+    if filters.get("categoria"):
+        criterio.append(f"de la familia {prompts.legible(filters['categoria'], siempre=True)}")
+    if filters.get("horas_min") is not None:
+        criterio.append(f"de {filters['horas_min']} horas o más")
+    if filters.get("horas_max") is not None:
+        criterio.append(f"de {filters['horas_max']} horas o menos")
+    que = f" ({', '.join(criterio)})" if criterio else ""
+    total = f"{aggregate['total']:,}".replace(",", ".")   # 13327 -> 13.327
+    lines = [f"Total de cursos que cumplen la consulta{que}: {total}."]
     if not filters.get("categoria"):
-        lines.append("Reparto por familia profesional:")
-        for categoria, n in sorted(aggregate["por_categoria"].items(), key=lambda kv: -kv[1]):
-            lines.append(f"  - {categoria}: {n}")
+        # Las 26 con su número producían una respuesta de 26 líneas, y aun así
+        # el modelo las contaba mal ("25 familias"). Se le da el número hecho y
+        # solo las principales con detalle.
+        reparto = sorted(aggregate["por_categoria"].items(), key=lambda kv: -kv[1])
+        lines.append(f"Número de familias profesionales: {len(reparto)}.")
+        lines.append("Las principales: " + "; ".join(
+            f"{prompts.legible(c, siempre=True)} ({n})" for c, n in reparto[:5]
+        ) + ".")
+        lines.append("Resto: " + ", ".join(prompts.legible(c, siempre=True) for c, _ in reparto[5:]) + ".")
     if aggregate["ejemplos"]:
         lines.append("Algunos ejemplos:")
-        for e in aggregate["ejemplos"]:
-            lines.append(f"  - {e['titulo']} ({e['categoria']}, {e['horas']} h)")
+        for e in aggregate["ejemplos"][:5]:
+            lines.append(
+                f"  - {prompts.legible(e['titulo'])} ({prompts.legible(e['categoria'], siempre=True)}, {e['horas']} h)"
+            )
     return "\n".join(lines)

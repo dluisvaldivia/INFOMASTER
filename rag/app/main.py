@@ -20,8 +20,8 @@ limiter = Limiter(key_func=get_remote_address)
 STATE: dict[str, Any] = {}
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def load_state() -> None:
+    """Carga índice y grafo. El Space (space/app.py) la llama sin pasar por lifespan."""
     meta = {}
     if config.META_PATH.exists():
         meta = json.loads(config.META_PATH.read_text("utf-8"))
@@ -33,6 +33,11 @@ async def lifespan(app: FastAPI):
         f"Catálogo listo: {len(index.df)} cursos, {len(index.categorias)} familias, "
         f"modo {meta.get('catalog_mode', '?')}"
     )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_state()
     yield
     STATE.clear()
 
@@ -64,7 +69,6 @@ class Source(BaseModel):
     titulo: str
     categoria: str
     horas: int
-    codigo_oficial: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -89,14 +93,14 @@ def health() -> dict[str, Any]:
 def chat(request: Request, payload: ChatRequest) -> ChatResponse:
     graph = STATE.get("graph")
     if graph is None:
-        return ChatResponse(answer=prompts.FALLBACK["otro"], sources=[], catalog_mode="?")
+        return ChatResponse(answer=prompts.FALLBACK["error"], sources=[], catalog_mode="?")
 
     result = graph.invoke({
         "question": payload.message.strip(),
         "history": [t.model_dump() for t in payload.history],
     })
     return ChatResponse(
-        answer=result.get("answer") or prompts.FALLBACK["otro"],
+        answer=result.get("answer") or prompts.FALLBACK["error"],
         sources=[Source(**s) for s in result.get("sources", [])],
         catalog_mode=STATE.get("meta", {}).get("catalog_mode", "completo"),
     )

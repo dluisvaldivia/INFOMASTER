@@ -9,7 +9,6 @@ export type ChatSource = {
   titulo: string
   categoria: string
   horas: number
-  codigo_oficial: string | null
 }
 
 export type ChatReply = {

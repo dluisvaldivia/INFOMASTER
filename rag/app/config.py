@@ -18,34 +18,25 @@ CHROMA_DIR = BASE_DIR / "chroma"
 EVAL_DIR = BASE_DIR / "eval"
 
 # --- Fuente ---------------------------------------------------------------
-# El Excel vive hoy dentro de la app de React; data/ tiene prioridad si existe
-# una copia (es lo que usa el Dockerfile, que no copia infomaster/).
-EXCEL_CANDIDATES = [
-    DATA_DIR / "CATALOGO.xlsx",
-    BASE_DIR.parent / "infomaster" / "CATALOGO.xlsx",
-]
-SHEET_NAME = "RESUMEN CURSOS 2025"
+# Catálogo ya limpio (nombres normalizados, erratas corregidas, filas con el
+# mismo nombre y horas fusionadas). Viene en dos ficheros con los mismos ids:
+#   - public: lo que se puede embeber y enseñar (nombre, horas, embed_text,
+#     familias, temas, tipo).
+#   - private: precios, códigos del proveedor y del SEPE, filas de origen.
+#     Nada de aquí entra en el contexto del LLM; los códigos solo se indexan
+#     en BM25 para poder encontrar un curso por su código.
+CATALOG_DIR = DATA_DIR / "Catalogue"
+PUBLIC_JSONL = "catalog_public.jsonl"
+PRIVATE_JSONL = "catalog_private.jsonl"
 PARQUET_PATH = DATA_DIR / "cursos.parquet"
 META_PATH = DATA_DIR / "catalog_meta.json"
 
 
-def excel_path() -> Path:
-    for candidate in EXCEL_CANDIDATES:
-        if candidate.exists():
-            return candidate
-    raise FileNotFoundError(
-        "No se encuentra CATALOGO.xlsx. Buscado en: "
-        + ", ".join(str(c) for c in EXCEL_CANDIDATES)
-    )
-
-
-# --- Aserciones de parseo -------------------------------------------------
-# Perfilado del catálogo 2025. Si un Excel nuevo no cuadra, la ingesta falla
+# --- Aserciones de carga --------------------------------------------------
+# Perfilado del catálogo limpio 2025. Si uno nuevo no cuadra, la ingesta falla
 # ruidosamente en vez de indexar a medias.
-EXPECTED_COURSES = 13690
+EXPECTED_COURSES = 13327
 EXPECTED_CATEGORIES = 26
-EXPECTED_SUBSECTIONS = 173
-EXPECTED_MISSING_PRICE = 3968
 
 # --- Índice ---------------------------------------------------------------
 EMBED_MODEL = "intfloat/multilingual-e5-small"
@@ -83,15 +74,19 @@ ANSWER_MAX_TOKENS = 600
 CONTACT_EMAIL = "info@infomasterformacion.es"
 CONTACT_PHONE = "+34 951 333 677"
 
-# El chat nunca cita precios: el 29% del PVP del Excel está roto (#REF!) y las
-# tarifas son B2B. precio_eur se guarda en metadatos para la futura página de
-# catálogo, pero no entra jamás en el contexto del LLM.
+# El chat nunca cita precios: son tarifas B2B que dependen del número de
+# alumnos y de la bonificación. Ojo: en este catálogo TODOS valen 7,5 €/hora,
+# así que el precio se deduce de las horas; de ahí la regla de prompts.py de no
+# confirmar cálculos del usuario. precio_eur se guarda en metadatos para la
+# futura página de catálogo, pero no entra jamás en el contexto del LLM.
 EXPOSE_PRICES = False
 
 # --- API ------------------------------------------------------------------
 ALLOWED_ORIGINS = [
     "https://www.infomasterformacion.es",
     "https://infomasterformacion.es",
+    # Demo del rediseño en GitHub Pages.
+    "https://dluisvaldivia.github.io",
 ]
 # Vite cambia de puerto solo cuando el 5173 está ocupado (y entonces el chat
 # fallaba por CORS sin decir por qué). Solo localhost: producción sigue en la
