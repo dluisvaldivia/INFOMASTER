@@ -5,3 +5,5 @@ data/catalog_meta.json
 .env
 __pycache__/
 *.pyc
+.space-build/
+data/Catalogue/

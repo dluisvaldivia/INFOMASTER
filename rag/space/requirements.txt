@@ -1,0 +1,14 @@
+# Space ZeroGPU: torch, gradio, spaces y huggingface_hub los pone el runtime.
+# No fijarlos aquí (romperían la resolución o el runtime de ZeroGPU).
+sentence-transformers>=3.0
+# Misma versión que construyó chroma/ en local: el formato en disco cambia entre versiones.
+chromadb==1.5.9
+rank-bm25>=0.2.2
+langgraph>=0.2
+langchain-core>=0.3
+groq>=0.11
+pandas>=2.2
+pyarrow>=17
+python-dotenv>=1.0
+slowapi>=0.1.9
+pyyaml>=6.0
